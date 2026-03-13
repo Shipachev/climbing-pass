@@ -494,7 +494,33 @@ ${html || '<div class="small">Архив пуст</div>'}
         </script>
         <script>
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('sw.js');
+                navigator.serviceWorker.register('sw.js').then((reg) => {
+                    // check for updates on load
+                    reg.update();
+
+                    // if a new service worker appears
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+
+                        newWorker.addEventListener('statechange', () => {
+                            if (
+                                newWorker.state === 'installed' &&
+                                navigator.serviceWorker.controller
+                            ) {
+                                // tell new worker to activate immediately
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                        });
+                    });
+                });
+
+                // reload page when the new service worker takes control
+                navigator.serviceWorker.addEventListener(
+                    'controllerchange',
+                    () => {
+                        window.location.reload();
+                    },
+                );
             }
         </script>
     </body>
