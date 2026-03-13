@@ -58,12 +58,24 @@
 
             input {
                 width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
                 padding: 12px;
                 border-radius: 12px;
                 border: 1px solid var(--border);
                 background: #f9f9f9;
                 margin-bottom: 12px;
                 font-size: 16px;
+                display: block;
+            }
+
+            input[type='date'],
+            input[type='number'] {
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+                -webkit-appearance: none;
+                appearance: none;
             }
 
             button {
@@ -185,8 +197,6 @@
 
     <body>
         <div class="container">
-            <h1>Скалодром</h1>
-
             <div id="app"></div>
         </div>
 
@@ -287,7 +297,9 @@
 <div class="small">Количество посещений</div>
 <input id="totalInput" type="number" value="8">
 
-<button class="primary" onclick="createPass()">Создать</button>
+
+
+<button class="primary" onclick="createPass()">Давай-давай</button>
 
 </div>
 `;
