@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>ClimbPass</title>
+        <link rel="manifest" href="manifest.json" />
+
+        <meta name="theme-color" content="#ff6b2c" />
+
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="ClimbPass" />
+
+        <link rel="apple-touch-icon" href="icon-192.png" />
+        <style>
+            :root {
+                --bg: #f2f2f7;
+                --card: #ffffff;
+                --accent: #ff6b2c;
+                --accent2: #ff9a6c;
+                --text: #1c1c1e;
+                --muted: #8e8e93;
+                --border: #e5e5ea;
+            }
+
+            body {
+                margin: 0;
+                background: var(--bg);
+                font-family:
+                    -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+                color: var(--text);
+            }
+
+            .container {
+                max-width: 520px;
+                margin: auto;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 28px;
+                margin-bottom: 20px;
+            }
+
+            .card {
+                background: white;
+                border-radius: 22px;
+                padding: 22px;
+                margin-bottom: 18px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            }
+
+            .small {
+                font-size: 14px;
+                color: var(--muted);
+            }
+
+            input {
+                width: 100%;
+                padding: 12px;
+                border-radius: 12px;
+                border: 1px solid var(--border);
+                background: #f9f9f9;
+                margin-bottom: 12px;
+                font-size: 16px;
+            }
+
+            button {
+                border: none;
+                border-radius: 14px;
+                padding: 14px;
+                font-size: 16px;
+                cursor: pointer;
+            }
+
+            .primary {
+                background: var(--accent);
+                color: white;
+                width: 100%;
+            }
+
+            .secondary {
+                background: #f2f2f7;
+            }
+
+            .visit {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 0;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .delete {
+                background: none;
+                padding: 0;
+            }
+
+            .delete svg {
+                width: 18px;
+                height: 18px;
+                fill: black;
+            }
+
+            .edit-buttons {
+                display: flex;
+                gap: 12px;
+                margin-top: 14px;
+            }
+
+            .edit-buttons button {
+                flex: 1;
+            }
+
+            .pass-card {
+                background: linear-gradient(
+                    135deg,
+                    var(--accent),
+                    var(--accent2)
+                );
+                color: white;
+
+                border-radius: 24px;
+
+                padding: 24px;
+
+                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+
+                margin-bottom: 20px;
+            }
+
+            .pass-top {
+                display: flex;
+                justify-content: space-between;
+            }
+
+            .pass-title {
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+            .pass-dates {
+                font-size: 14px;
+                opacity: 0.9;
+            }
+
+            .pass-visits {
+                font-size: 48px;
+                font-weight: 700;
+                margin-top: 14px;
+            }
+
+            .pass-label {
+                font-size: 14px;
+                opacity: 0.9;
+            }
+
+            .progress-bar {
+                margin-top: 16px;
+                height: 10px;
+                background: rgba(255, 255, 255, 0.25);
+                border-radius: 8px;
+                overflow: hidden;
+            }
+
+            .progress-fill {
+                height: 100%;
+                background: white;
+                border-radius: 8px;
+                transition: width 0.4s;
+            }
+
+            .pass-actions {
+                margin-top: 18px;
+            }
+
+            .pass-edit {
+                background: none;
+                border: none;
+                color: white;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <h1>Скалодром</h1>
+
+            <div id="app"></div>
+        </div>
+
+        <script>
+            let data = JSON.parse(localStorage.getItem('climb_pass') || '[]');
+
+            function save() {
+                localStorage.setItem('climb_pass', JSON.stringify(data));
+            }
+
+            function today() {
+                return new Date().toISOString().split('T')[0];
+            }
+
+            function plus30() {
+                let d = new Date();
+                d.setDate(d.getDate() + 30);
+                return d.toISOString().split('T')[0];
+            }
+
+            function formatDate(d) {
+                return new Date(d).toLocaleDateString('ru-RU');
+            }
+
+            function daysLeft(end) {
+                let diff = (new Date(end) - new Date()) / (1000 * 60 * 60 * 24);
+                return Math.ceil(diff);
+            }
+
+            function activePass() {
+                return data.find((p) => p.status === 'active');
+            }
+
+            function archiveCheck() {
+                let p = activePass();
+
+                if (!p) return;
+
+                if (
+                    new Date(p.end) < new Date() ||
+                    p.visits.length >= p.total
+                ) {
+                    p.status = 'archived';
+                    save();
+                }
+            }
+
+            function createPass() {
+                data.push({
+                    id: Date.now(),
+                    start: startInput.value,
+                    end: endInput.value,
+                    total: parseInt(totalInput.value),
+                    visits: [],
+                    status: 'active',
+                });
+
+                save();
+                render();
+            }
+
+            function addVisit() {
+                let p = activePass();
+
+                if (!p) return;
+
+                if (p.visits.length >= p.total) return;
+
+                p.visits.push(today());
+
+                save();
+
+                render();
+            }
+
+            function deleteVisit(i) {
+                let p = activePass();
+
+                p.visits.splice(i, 1);
+
+                save();
+
+                render();
+            }
+
+            function renderCreate() {
+                return `
+<div class="card">
+
+<h3>Новый абонемент</h3>
+
+<div class="small">Дата начала</div>
+<input id="startInput" type="date" value="${today()}">
+
+<div class="small">Дата окончания</div>
+<input id="endInput" type="date" value="${plus30()}">
+
+<div class="small">Количество посещений</div>
+<input id="totalInput" type="number" value="8">
+
+<button class="primary" onclick="createPass()">Создать</button>
+
+</div>
+`;
+            }
+
+            function renderPassCard(p) {
+                let remain = p.total - p.visits.length;
+
+                let percent = (p.visits.length / p.total) * 100;
+
+                let visitsHTML = p.visits
+                    .map(
+                        (v, i) => `
+
+<div class="visit">
+
+<div>${formatDate(v)}</div>
+
+<button class="delete" onclick="deleteVisit(${i})">
+
+<svg viewBox="0 0 24 24">
+
+<path d="M3 6h18v2H3V6zm2 3h14l-1.5 12.5H6.5L5 9z"/>
+
+</svg>
+
+</button>
+
+</div>
+
+`,
+                    )
+                    .join('');
+
+                return `
+
+<div class="pass-card">
+
+<div class="pass-top">
+
+<div>
+
+<div class="pass-title">Абонемент</div>
+
+<div class="pass-dates">${formatDate(p.start)} — ${formatDate(p.end)}</div>
+
+<div class="pass-dates">${daysLeft(p.end)} дней осталось</div>
+
+</div>
+
+<button class="pass-edit" onclick="editPass()">
+
+<svg viewBox="0 0 24 24" width="18" height="18">
+
+<path fill="currentColor" d="M3 17.25V21h3.75l11-11.03-3.75-3.75L3 17.25z"/>
+
+</svg>
+
+</button>
+
+</div>
+
+<div class="pass-visits">${remain}</div>
+
+<div class="pass-label">осталось посещений</div>
+
+<div class="progress-bar">
+
+<div class="progress-fill" style="width:${percent}%"></div>
+
+</div>
+
+<div class="pass-actions">
+
+<button class="primary" onclick="addVisit()">Отметить посещение</button>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>История посещений</h3>
+
+${visitsHTML || '<div class="small">Нет посещений</div>'}
+
+</div>
+
+`;
+            }
+
+            function renderArchive() {
+                let archive = data.filter((x) => x.status === 'archived');
+
+                let html = archive
+                    .map(
+                        (a) => `
+
+<div class="visit">
+
+<div>
+
+${formatDate(a.start)} — ${formatDate(a.end)}
+
+(${a.visits.length}/${a.total})
+
+</div>
+
+</div>
+
+`,
+                    )
+                    .join('');
+
+                return `
+
+<div class="card">
+
+<h3>Архив абонементов</h3>
+
+${html || '<div class="small">Архив пуст</div>'}
+
+</div>
+
+`;
+            }
+
+            function render() {
+                archiveCheck();
+
+                let p = activePass();
+
+                let html = '';
+
+                if (p) {
+                    html += renderPassCard(p);
+                } else {
+                    html += renderCreate();
+                }
+
+                html += renderArchive();
+
+                document.getElementById('app').innerHTML = html;
+            }
+
+            function editPass() {
+                let p = activePass();
+
+                if (!p) return;
+
+                document.getElementById('app').innerHTML = `
+
+<div class="card">
+
+<h3>Редактировать абонемент</h3>
+
+<div class="small">Дата начала</div>
+<input id="editStart" type="date" value="${p.start}">
+
+<div class="small">Дата окончания</div>
+<input id="editEnd" type="date" value="${p.end}">
+
+<div class="small">Количество посещений</div>
+<input id="editTotal" type="number" value="${p.total}">
+
+<div class="edit-buttons">
+
+<button class="primary" onclick="saveEdit()">Сохранить</button>
+
+<button class="secondary" onclick="render()">Отмена</button>
+
+</div>
+
+</div>
+
+`;
+            }
+
+            function saveEdit() {
+                let p = activePass();
+
+                p.start = editStart.value;
+                p.end = editEnd.value;
+                p.total = parseInt(editTotal.value);
+
+                save();
+
+                render();
+            }
+
+            render();
+        </script>
+        <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js');
+            }
+        </script>
+    </body>
+</html>
