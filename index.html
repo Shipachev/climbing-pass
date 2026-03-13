@@ -2,7 +2,11 @@
 <html lang="ru">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+
         <title>ClimbPass</title>
         <link rel="manifest" href="manifest.json" />
 
@@ -14,6 +18,13 @@
 
         <link rel="apple-touch-icon" href="icon-192.png" />
         <style>
+            * {
+                user-select: none; /* стандарт */
+                -webkit-user-select: none; /* Safari / iOS */
+                -moz-user-select: none; /* Firefox */
+                -ms-user-select: none; /* IE/Edge */
+            }
+
             :root {
                 --bg: #f2f2f7;
                 --card: #ffffff;
@@ -30,6 +41,7 @@
                 font-family:
                     -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
                 color: var(--text);
+                -webkit-touch-callout: none; /* убирает контекстное меню при долгом тапе на iOS */
             }
 
             .container {
