@@ -295,6 +295,21 @@
             }
 
             function renderCreate() {
+                const phrases = [
+                    'Давай-давай!',
+                    'Закрепи!',
+                    'Нагружай!',
+                    'Страховка готова!',
+                    'Выбери!',
+                    'Ногу чётче!',
+                    'В динамике!',
+                    'Топ!',
+                    'Сдваивайся!',
+                    'Ноги меняй!',
+                ];
+
+                const randomLabel =
+                    phrases[Math.floor(Math.random() * phrases.length)];
                 return `
 <div class="card">
 
@@ -311,7 +326,7 @@
 
 
 
-<button class="primary" onclick="createPass()">Давай-давай</button>
+<button class="primary" onclick="createPass()">${randomLabel}</button>
 
 </div>
 `;
