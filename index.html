@@ -68,7 +68,8 @@
                 color: var(--muted);
             }
 
-            input {
+            input,
+            select {
                 width: 100%;
                 max-width: 100%;
                 box-sizing: border-box;
@@ -82,7 +83,8 @@
             }
 
             input[type='date'],
-            input[type='number'] {
+            input[type='number'],
+            select {
                 width: 100%;
                 max-width: 100%;
                 box-sizing: border-box;
@@ -322,7 +324,9 @@
 <input id="endInput" type="date" value="${plus30()}">
 
 <div class="small">Количество посещений</div>
-<input id="totalInput" type="number" value="8">
+<select id="totalInput">
+${Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}" ${i + 1 === 8 ? 'selected' : ''}>${i + 1}</option>`).join('')}
+</select>
 
 
 
@@ -490,7 +494,9 @@ ${html || '<div class="small">Архив пуст</div>'}
 <input id="editEnd" type="date" value="${p.end}">
 
 <div class="small">Количество посещений</div>
-<input id="editTotal" type="number" value="${p.total}">
+<select id="editTotal">
+${Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}" ${i + 1 === p.total ? 'selected' : ''}>${i + 1}</option>`).join('')}
+</select>
 
 <div class="edit-buttons">
 
