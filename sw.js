@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'climbpass-v10';
+const CACHE_VERSION = 'climbpass-v11';
 
 const APP_SHELL = [
     './',
