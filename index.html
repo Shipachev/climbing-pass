@@ -8,6 +8,10 @@
         />
 
         <title>ClimbPass</title>
+        <meta
+            name="description"
+            content="Учёт абонементов на скалодром: остаток посещений и срок действия всегда под рукой."
+        />
         <link rel="manifest" href="manifest.json" />
 
         <meta name="theme-color" content="#ff6b2c" />
@@ -156,6 +160,12 @@
                 box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
 
                 margin-bottom: 20px;
+
+                transition: background 0.4s;
+            }
+
+            .pass-card.warn {
+                background: linear-gradient(135deg, #e53e3e, #fc8181);
             }
 
             .pass-top {
@@ -212,6 +222,7 @@
             .footer-help {
                 text-align: center;
                 margin-top: 30px;
+                margin-bottom: 40px;
                 font-size: 14px;
                 color: var(--muted);
             }
@@ -220,6 +231,95 @@
                 color: var(--accent);
                 text-decoration: none;
                 font-weight: 500;
+            }
+
+            .footer-actions {
+                display: flex;
+                gap: 10px;
+                margin-top: 14px;
+            }
+
+            .footer-actions button {
+                flex: 1;
+                padding: 11px;
+                font-size: 14px;
+                border-radius: 12px;
+                background: white;
+                color: var(--text);
+                border: 1px solid var(--border);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+
+            .footer-actions button:active {
+                background: var(--bg);
+            }
+
+            .import-area {
+                margin-top: 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .import-area textarea {
+                width: 100%;
+                box-sizing: border-box;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 12px;
+                font-size: 13px;
+                font-family: monospace;
+                background: #f9f9f9;
+                resize: vertical;
+                min-height: 80px;
+                color: var(--text);
+                user-select: text;
+                -webkit-user-select: text;
+            }
+
+            .import-area .row {
+                display: flex;
+                gap: 8px;
+            }
+
+            .import-area .row button {
+                flex: 1;
+            }
+
+            .toast {
+                position: fixed;
+                bottom: 28px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #1c1c1e;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-size: 14px;
+                white-space: nowrap;
+                z-index: 9999;
+                animation:
+                    toastIn 0.2s ease,
+                    toastOut 0.3s ease 1.7s forwards;
+                pointer-events: none;
+            }
+
+            @keyframes toastIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+            }
+
+            @keyframes toastOut {
+                to {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(10px);
+                }
             }
 
             .help-overlay {
@@ -265,6 +365,74 @@
                 height: 100%;
                 fill: currentColor;
             }
+
+            /* кнопка «Отметить посещение» */
+            .btn-visit {
+                transition:
+                    transform 0.1s,
+                    box-shadow 0.1s;
+            }
+
+            .btn-visit:active {
+                transform: scale(0.96);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+            }
+
+            @keyframes visitAdded {
+                0% {
+                    transform: scale(1);
+                }
+                40% {
+                    transform: scale(1.06);
+                }
+                100% {
+                    transform: scale(1);
+                }
+            }
+
+            .btn-visit.pop {
+                animation: visitAdded 0.3s ease;
+            }
+
+            /* раскрываемый архив */
+            .archive-row {
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 0;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .archive-row:last-child {
+                border-bottom: none;
+            }
+
+            .archive-row .chevron {
+                font-size: 11px;
+                color: var(--muted);
+                transition: transform 0.2s;
+                display: inline-block;
+            }
+
+            .archive-row.open .chevron {
+                transform: rotate(180deg);
+            }
+
+            .archive-detail {
+                padding: 6px 0 10px 0;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .archive-detail:last-child {
+                border-bottom: none;
+            }
+
+            .archive-visit-item {
+                font-size: 13px;
+                color: var(--muted);
+                padding: 3px 0;
+            }
         </style>
     </head>
 
@@ -275,6 +443,7 @@
 
         <script>
             let data = JSON.parse(localStorage.getItem('climb_pass') || '[]');
+            let expandedArchiveId = null;
 
             function save() {
                 localStorage.setItem('climb_pass', JSON.stringify(data));
@@ -296,7 +465,7 @@
 
             function daysLeft(end) {
                 let diff = (new Date(end) - new Date()) / (1000 * 60 * 60 * 24);
-                return Math.ceil(diff);
+                return Math.max(0, Math.ceil(diff));
             }
 
             function activePass() {
@@ -333,25 +502,40 @@
 
             function addVisit() {
                 let p = activePass();
-
                 if (!p) return;
-
                 if (p.visits.length >= p.total) return;
 
-                p.visits.push(today());
+                let todayStr = today();
+                if (p.visits.includes(todayStr)) {
+                    if (
+                        !confirm(
+                            'Вы уже отметили посещение сегодня. Добавить ещё одно?',
+                        )
+                    )
+                        return;
+                }
 
+                p.visits.push(todayStr);
                 save();
 
+                // анимация кнопки
                 render();
+                requestAnimationFrame(() => {
+                    let btn = document.querySelector('.btn-visit');
+                    if (btn) {
+                        btn.classList.remove('pop');
+                        void btn.offsetWidth;
+                        btn.classList.add('pop');
+                    }
+                });
             }
 
             function deleteVisit(i) {
+                if (!confirm('Удалить это посещение?')) return;
+
                 let p = activePass();
-
                 p.visits.splice(i, 1);
-
                 save();
-
                 render();
             }
 
@@ -383,35 +567,46 @@
             function renderPassCard(p) {
                 let remain = p.total - p.visits.length;
 
-                let percent = (p.visits.length / p.total) * 100;
+                let percent = (remain / p.total) * 100;
 
-                let visitsHTML = p.visits
+                let days = daysLeft(p.end);
+                let isUrgent = remain <= 1 || days <= 3;
+                let warnClass = isUrgent ? ' warn' : '';
+
+                let warnMsg = '';
+                if (remain === 0) {
+                    warnMsg =
+                        '<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Посещения закончились</div>';
+                } else if (remain === 1) {
+                    warnMsg =
+                        '<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Осталось последнее посещение</div>';
+                } else if (days === 0) {
+                    warnMsg =
+                        '<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Абонемент истекает сегодня</div>';
+                } else if (days <= 3) {
+                    warnMsg = `<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Абонемент истекает через ${days} дн.</div>`;
+                }
+
+                // сортируем по убыванию даты для отображения
+                let sortedVisits = [...p.visits]
+                    .map((v, origIndex) => ({ date: v, origIndex }))
+                    .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+                let visitsHTML = sortedVisits
                     .map(
-                        (v, i) => `
-
+                        ({ date, origIndex }) => `
 <div class="visit">
-
-<div>${formatDate(v)}</div>
-
-<button class="delete" onclick="deleteVisit(${i})">
-
-<svg viewBox="0 0 24 24">
-
-<path d="M3 6h18v2H3V6zm2 3h14l-1.5 12.5H6.5L5 9z"/>
-
-</svg>
-
-</button>
-
-</div>
-
-`,
+  <div>${formatDate(date)}</div>
+  <button class="delete" onclick="deleteVisit(${origIndex})">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 12.5H6.5L5 9z"/></svg>
+  </button>
+</div>`,
                     )
                     .join('');
 
                 return `
 
-<div class="pass-card">
+<div class="pass-card${warnClass}">
 
 <div class="pass-top">
 
@@ -421,7 +616,7 @@
 
 <div class="pass-dates">${formatDate(p.start)} — ${formatDate(p.end)}</div>
 
-<div class="pass-dates">${daysLeft(p.end)} дней осталось</div>
+<div class="pass-dates">${days} дней осталось</div>
 
 </div>
 
@@ -447,9 +642,11 @@
 
 </div>
 
+${warnMsg}
+
 <div class="pass-actions">
 
-<button class="primary" onclick="addVisit()">Отметить посещение</button>
+<button class="primary btn-visit" onclick="addVisit()">Отметить посещение</button>
 
 </div>
 
@@ -466,40 +663,166 @@ ${visitsHTML || '<div class="small">Нет посещений</div>'}
 `;
             }
 
+            function toggleArchive(id) {
+                expandedArchiveId = expandedArchiveId === id ? null : id;
+                render();
+            }
+
             function renderArchive() {
                 let archive = data.filter((x) => x.status === 'archived');
+                if (!archive.length) {
+                    return `<div class="card"><h3>Архив абонементов</h3><div class="small">Архив пуст</div></div>`;
+                }
 
+                // #8: сортируем визиты по убыванию внутри каждого архивного абонемента
                 let html = archive
-                    .map(
-                        (a) => `
+                    .map((a) => {
+                        let isOpen = expandedArchiveId === a.id;
+                        let openClass = isOpen ? ' open' : '';
 
-<div class="visit">
+                        let detailHTML = '';
+                        if (isOpen) {
+                            let sorted = [...a.visits].sort((x, y) =>
+                                x < y ? 1 : -1,
+                            );
+                            if (sorted.length) {
+                                detailHTML = `<div class="archive-detail">${sorted
+                                    .map(
+                                        (v) =>
+                                            `<div class="archive-visit-item">📅 ${formatDate(v)}</div>`,
+                                    )
+                                    .join('')}</div>`;
+                            } else {
+                                detailHTML = `<div class="archive-detail"><div class="archive-visit-item">Посещений не было</div></div>`;
+                            }
+                        }
 
-<div>
-
-${formatDate(a.start)} — ${formatDate(a.end)}
-
-(${a.visits.length}/${a.total})
-
+                        return `
+<div class="archive-row${openClass}" onclick="toggleArchive(${a.id})">
+  <div>
+    <div style="font-size:14px;">${formatDate(a.start)} — ${formatDate(a.end)}</div>
+    <div class="small">${a.visits.length} из ${a.total} посещений</div>
+  </div>
+  <span class="chevron">▼</span>
 </div>
-
-</div>
-
-`,
-                    )
+${detailHTML}`;
+                    })
                     .join('');
 
+                return `<div class="card"><h3>Архив абонементов</h3>${html}</div>`;
+            }
+
+            function showToast(msg) {
+                document
+                    .querySelectorAll('.toast')
+                    .forEach((el) => el.remove());
+                let t = document.createElement('div');
+                t.className = 'toast';
+                t.textContent = msg;
+                document.body.appendChild(t);
+                setTimeout(() => t.remove(), 2100);
+            }
+
+            function exportData() {
+                let json = JSON.stringify(data, null, 2);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard
+                        .writeText(json)
+                        .then(() => {
+                            showToast('✅ Скопировано в буфер обмена');
+                        })
+                        .catch(() => showExportFallback(json));
+                } else {
+                    showExportFallback(json);
+                }
+            }
+
+            function showExportFallback(json) {
+                // на iOS clipboard API часто недоступен — показываем textarea для ручного копирования
+                let existing = document.getElementById('exportFallback');
+                if (existing) {
+                    existing.remove();
+                    return;
+                }
+                let wrap = document.createElement('div');
+                wrap.id = 'exportFallback';
+                wrap.className = 'import-area';
+                wrap.style.marginTop = '12px';
+                wrap.innerHTML = `
+                    <div class="small" style="margin-bottom:4px;">Выделите всё и скопируйте:</div>
+                    <textarea readonly onclick="this.select()">${json}</textarea>`;
+                document.getElementById('exportImportCard').appendChild(wrap);
+                wrap.querySelector('textarea').select();
+            }
+
+            let importVisible = false;
+
+            function toggleImport() {
+                importVisible = !importVisible;
+                render();
+                if (importVisible) {
+                    requestAnimationFrame(() => {
+                        let ta = document.getElementById('importTextarea');
+                        if (ta) ta.focus();
+                    });
+                }
+            }
+
+            function doImport() {
+                let ta = document.getElementById('importTextarea');
+                if (!ta) return;
+                let raw = ta.value.trim();
+                try {
+                    let parsed = JSON.parse(raw);
+                    if (!Array.isArray(parsed)) throw new Error();
+                    // базовая валидация структуры
+                    for (let p of parsed) {
+                        if (
+                            !p.id ||
+                            !p.start ||
+                            !p.end ||
+                            !Array.isArray(p.visits) ||
+                            !p.status
+                        )
+                            throw new Error();
+                    }
+                    data = parsed;
+                    save();
+                    importVisible = false;
+                    render();
+                    showToast('✅ Данные импортированы');
+                } catch {
+                    showToast('❌ Неверный формат JSON');
+                }
+            }
+
+            function renderFooter() {
+                let importBlock = importVisible
+                    ? `
+<div class="import-area">
+  <textarea id="importTextarea" placeholder="Вставьте JSON сюда…" style="user-select:text;-webkit-user-select:text;"></textarea>
+  <div class="row">
+    <button class="primary" onclick="doImport()">Импортировать</button>
+    <button class="secondary" onclick="toggleImport()">Отмена</button>
+  </div>
+</div>`
+                    : '';
+
                 return `
-
-<div class="card">
-
-<h3>Архив абонементов</h3>
-
-${html || '<div class="small">Архив пуст</div>'}
-
+<div class="footer-help">
+  <a href="#" onclick="openHelp();return false;"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px;fill:currentColor;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>Инструкция</a>
+  <span style="margin:0 8px;opacity:0.3;">·</span>
+  <a href="https://t.me/shipachev" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px;fill:currentColor;"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>@shipachev</a>
 </div>
-
-`;
+<div class="card" id="exportImportCard">
+  <div style="font-size:15px;font-weight:600;margin-bottom:4px;">Резервная копия</div>
+  <div class="small">Экспортируйте данные перед сменой браузера или устройства</div>
+  <div class="footer-actions">
+    <button onclick="exportData()">📤 Экспорт</button>
+    <button onclick="toggleImport()">${importVisible ? '✕ Отмена' : '📥 Импорт'}</button>
+  </div>
+  ${importBlock}
+</div>`;
             }
 
             function render() {
@@ -507,7 +830,7 @@ ${html || '<div class="small">Архив пуст</div>'}
 
                 let p = activePass();
 
-                let html = '';
+                let html = '<h1>🧗 ClimbPass</h1>';
 
                 if (p) {
                     html += renderPassCard(p);
@@ -516,12 +839,7 @@ ${html || '<div class="small">Архив пуст</div>'}
                 }
 
                 html += renderArchive();
-
-                html += `
-<div class="footer-help">
-<a href="#" onclick="openHelp();return false;">Инструкция</a>
-</div>
-`;
+                html += renderFooter();
 
                 document.getElementById('app').innerHTML = html;
             }
@@ -566,9 +884,9 @@ ${html || '<div class="small">Архив пуст</div>'}
             function saveEdit() {
                 let p = activePass();
 
-                p.start = editStart.value;
-                p.end = editEnd.value;
-                p.total = parseInt(editTotal.value);
+                p.start = document.getElementById('editStart').value;
+                p.end = document.getElementById('editEnd').value;
+                p.total = parseInt(document.getElementById('editTotal').value);
 
                 save();
 
