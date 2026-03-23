@@ -1,7 +1,8 @@
 {
     "name": "ClimbPass",
     "short_name": "ClimbPass",
-    "start_url": ".",
+    "start_url": "/climbing-pass/",
+    "scope": "/climbing-pass/",
     "display": "standalone",
     "background_color": "#f2f2f7",
     "theme_color": "#ff6b2c",
