@@ -669,7 +669,9 @@ ${visitsHTML || '<div class="small">Нет посещений</div>'}
             }
 
             function renderArchive() {
-                let archive = data.filter((x) => x.status === 'archived');
+                let archive = data
+                    .filter((x) => x.status === 'archived')
+                    .sort((a, b) => (a.end < b.end ? 1 : -1));
                 if (!archive.length) {
                     return `<div class="card"><h3>Архив абонементов</h3><div class="small">Архив пуст</div></div>`;
                 }
