@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'climbpass-v16';
+const CACHE_VERSION = 'climbpass-v17';
 
 const APP_SHELL = [
     './',
@@ -11,36 +11,30 @@ const APP_SHELL = [
 
 // INSTALL
 self.addEventListener('install', (event) => {
-    self.skipWaiting();
-
     event.waitUntil(
         caches.open(CACHE_VERSION).then((cache) => {
             return cache.addAll(APP_SHELL);
         }),
     );
+    // НЕ вызываем skipWaiting() здесь — страница сама скажет когда активироваться
 });
 
 // ACTIVATE
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) => {
-            return Promise.all(
-                keys.map((key) => {
-                    if (key !== CACHE_VERSION) {
-                        return caches.delete(key);
-                    }
-                }),
-            );
-        }),
+        caches
+            .keys()
+            .then((keys) => {
+                return Promise.all(
+                    keys.map((key) => {
+                        if (key !== CACHE_VERSION) {
+                            return caches.delete(key);
+                        }
+                    }),
+                );
+            })
+            .then(() => self.clients.claim()),
     );
-
-    self.clients.matchAll().then((clients) => {
-        clients.forEach((client) =>
-            client.postMessage({ type: 'NEW_VERSION_AVAILABLE' }),
-        );
-    });
-
-    return self.clients.claim();
 });
 
 // FETCH
