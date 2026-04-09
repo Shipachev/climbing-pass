@@ -34,6 +34,12 @@ self.addEventListener('activate', (event) => {
         }),
     );
 
+    self.clients.matchAll().then((clients) => {
+        clients.forEach((client) =>
+            client.postMessage({ type: 'NEW_VERSION_AVAILABLE' }),
+        );
+    });
+
     return self.clients.claim();
 });
 
@@ -41,17 +47,41 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
 
+    // Для HTML — стратегия network-first (чтобы подтягивалась новая версия)
+    if (event.request.headers.get('accept')?.includes('text/html')) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_VERSION).then((cache) => {
+                        cache.put(event.request, clone);
+                    });
+                    return response;
+                })
+                .catch(() => caches.match(event.request)),
+        );
+        return;
+    }
+
+    // Для остальных ресурсов — cache-first
     event.respondWith(
         caches.match(event.request).then((cached) => {
-            if (cached) return cached;
+            if (cached) {
+                // Параллельно обновляем кеш (stale-while-revalidate)
+                fetch(event.request).then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_VERSION).then((cache) => {
+                        cache.put(event.request, clone);
+                    });
+                });
+                return cached;
+            }
 
             return fetch(event.request).then((response) => {
-                let clone = response.clone();
-
+                const clone = response.clone();
                 caches.open(CACHE_VERSION).then((cache) => {
                     cache.put(event.request, clone);
                 });
-
                 return response;
             });
         }),
