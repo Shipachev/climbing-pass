@@ -979,7 +979,13 @@ ${detailHTML}`;
                     // check for updates on load
                     reg.update();
 
-                    // if a new service worker appears
+                    if (reg.waiting) {
+                        showToast('🆕 Обновление установлено…');
+                        setTimeout(() => {
+                            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        }, 1200);
+                    }
+
                     reg.addEventListener('updatefound', () => {
                         const newWorker = reg.installing;
 
