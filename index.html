@@ -451,7 +451,7 @@
                             .then((r) => r.text())
                             .then((text) => {
                                 const m = text.match(
-                                    /CACHE_VERSION\s*=\s*['"]climbpass-v([\d.]+)['"]/,
+                                    /CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/,
                                 );
                                 if (m) {
                                     APP_VERSION = m[1];
