@@ -1,4 +1,4 @@
-const CACHE_VERSION = '24.1';
+const CACHE_VERSION = '24.2';
 
 const APP_SHELL = [
     './',
@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
             return cache.addAll(APP_SHELL);
         }),
     );
-    // НЕ вызываем skipWaiting() здесь — страница сама скажет когда активироваться
+    self.skipWaiting();
 });
 
 // ACTIVATE
@@ -52,7 +52,11 @@ self.addEventListener('fetch', (event) => {
                     });
                     return response;
                 })
-                .catch(() => caches.match(event.request)),
+                .catch(
+                    () =>
+                        caches.match(event.request) ||
+                        caches.match('./index.html'),
+                ),
         );
         return;
     }
