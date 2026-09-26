@@ -429,9 +429,18 @@
             }
 
             .archive-visit-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
                 font-size: 13px;
                 color: var(--muted);
                 padding: 3px 0;
+            }
+
+            .archive-visit-item .delete svg {
+                width: 16px;
+                height: 16px;
+                fill: var(--muted);
             }
         </style>
     </head>
@@ -444,8 +453,9 @@
         <script>
             let APP_VERSION = '';
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistration().then((reg) => {
-                    const sw = reg?.active || reg?.installing || reg?.waiting;
+                // ready дожидается активного SW, в том числе при первом открытии
+                navigator.serviceWorker.ready.then((reg) => {
+                    const sw = reg.active;
                     if (sw?.scriptURL) {
                         fetch(sw.scriptURL)
                             .then((r) => r.text())
@@ -471,27 +481,52 @@
                 localStorage.setItem('climb_pass', JSON.stringify(data));
             }
 
+            // даты храним строками YYYY-MM-DD в локальном времени:
+            // toISOString() даёт дату по UTC, и после полуночи по Москве получался вчерашний день
+            function toISODate(d) {
+                let m = String(d.getMonth() + 1).padStart(2, '0');
+                let day = String(d.getDate()).padStart(2, '0');
+                return `${d.getFullYear()}-${m}-${day}`;
+            }
+
             function today() {
-                return new Date().toISOString().split('T')[0];
+                return toISODate(new Date());
             }
 
             function plus30() {
                 let d = new Date();
                 d.setDate(d.getDate() + 30);
-                return d.toISOString().split('T')[0];
+                return toISODate(d);
             }
 
             function formatDate(d) {
-                return new Date(d).toLocaleDateString('ru-RU');
+                return d.split('-').reverse().join('.');
             }
 
             function daysLeft(end) {
-                let diff = (new Date(end) - new Date()) / (1000 * 60 * 60 * 24);
-                return Math.max(0, Math.ceil(diff));
+                let [y, m, d] = end.split('-').map(Number);
+                let now = new Date();
+                let startOfToday = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
+                let diff = (new Date(y, m - 1, d) - startOfToday) / 86400000;
+                return Math.max(0, Math.round(diff));
+            }
+
+            function plural(n, one, few, many) {
+                let rule = new Intl.PluralRules('ru').select(n);
+                return rule === 'one' ? one : rule === 'few' ? few : many;
             }
 
             function activePass() {
                 return data.find((p) => p.status === 'active');
+            }
+
+            // дата окончания входит в срок действия
+            function isFinished(p) {
+                return p.end < today() || p.visits.length >= p.total;
             }
 
             function archiveCheck() {
@@ -499,21 +534,36 @@
 
                 if (!p) return;
 
-                if (
-                    new Date(p.end) < new Date() ||
-                    p.visits.length >= p.total
-                ) {
+                if (isFinished(p)) {
                     p.status = 'archived';
                     save();
                 }
             }
 
             function createPass() {
+                let start = document.getElementById('startInput').value;
+                let end = document.getElementById('endInput').value;
+
+                if (!start || !end) {
+                    showToast('❌ Укажите даты');
+                    return;
+                }
+                if (end < start) {
+                    showToast('❌ Окончание раньше начала');
+                    return;
+                }
+                if (end < today()) {
+                    showToast('❌ Дата окончания уже прошла');
+                    return;
+                }
+
                 data.push({
                     id: Date.now(),
-                    start: startInput.value,
-                    end: endInput.value,
-                    total: parseInt(totalInput.value),
+                    start,
+                    end,
+                    total: parseInt(
+                        document.getElementById('totalInput').value,
+                    ),
                     visits: [],
                     status: 'active',
                 });
@@ -539,9 +589,15 @@
 
                 p.visits.push(todayStr);
                 save();
+                render();
+
+                // последнее посещение — абонемент ушёл в архив, карточки больше нет
+                if (p.status === 'archived') {
+                    showToast('🏁 Абонемент завершён');
+                    return;
+                }
 
                 // анимация кнопки
-                render();
                 requestAnimationFrame(() => {
                     let btn = document.querySelector('.btn-visit');
                     if (btn) {
@@ -552,14 +608,33 @@
                 });
             }
 
-            function deleteVisit(i) {
+            function deletePassVisit(passId, visitIndex) {
+                let p = data.find((x) => x.id === passId);
+                if (!p) return;
                 if (!confirm('Удалить это посещение?')) return;
 
-                let p = activePass();
-                p.visits.splice(i, 1);
+                p.visits.splice(visitIndex, 1);
+
+                // случайно отмеченное последнее посещение: абонемент снова действует
+                if (p.status === 'archived' && !activePass() && !isFinished(p)) {
+                    p.status = 'active';
+                    expandedArchiveId = null;
+                    showToast('Абонемент снова активен');
+                }
+
                 save();
                 render();
             }
+
+            // посещения от новых к старым, с индексом в исходном массиве для удаления
+            function sortedVisits(p) {
+                return p.visits
+                    .map((date, origIndex) => ({ date, origIndex }))
+                    .sort((a, b) => (a.date < b.date ? 1 : -1));
+            }
+
+            const TRASH_ICON =
+                '<svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 12.5H6.5L5 9z"/></svg>';
 
             function renderCreate() {
                 return `
@@ -595,33 +670,29 @@
                 let isUrgent = remain <= 1 || days <= 3;
                 let warnClass = isUrgent ? ' warn' : '';
 
+                // remain === 0 здесь не бывает: такой абонемент уже в архиве
                 let warnMsg = '';
-                if (remain === 0) {
-                    warnMsg =
-                        '<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Посещения закончились</div>';
-                } else if (remain === 1) {
+                if (remain === 1) {
                     warnMsg =
                         '<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Осталось последнее посещение</div>';
                 } else if (days === 0) {
                     warnMsg =
                         '<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Абонемент истекает сегодня</div>';
                 } else if (days <= 3) {
-                    warnMsg = `<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Абонемент истекает через ${days} дн.</div>`;
+                    warnMsg = `<div style="margin-top:10px;font-size:13px;opacity:0.95;font-weight:600;">⚠️ Абонемент истекает через ${days} ${plural(days, 'день', 'дня', 'дней')}</div>`;
                 }
 
-                // сортируем по убыванию даты для отображения
-                let sortedVisits = [...p.visits]
-                    .map((v, origIndex) => ({ date: v, origIndex }))
-                    .sort((a, b) => (a.date < b.date ? 1 : -1));
+                let daysText =
+                    days === 0
+                        ? 'последний день'
+                        : `${days} ${plural(days, 'день остался', 'дня осталось', 'дней осталось')}`;
 
-                let visitsHTML = sortedVisits
+                let visitsHTML = sortedVisits(p)
                     .map(
                         ({ date, origIndex }) => `
 <div class="visit">
   <div>${formatDate(date)}</div>
-  <button class="delete" onclick="deleteVisit(${origIndex})">
-    <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 12.5H6.5L5 9z"/></svg>
-  </button>
+  <button class="delete" aria-label="Удалить посещение" onclick="deletePassVisit(${p.id}, ${origIndex})">${TRASH_ICON}</button>
 </div>`,
                     )
                     .join('');
@@ -638,11 +709,11 @@
 
 <div class="pass-dates">${formatDate(p.start)} — ${formatDate(p.end)}</div>
 
-<div class="pass-dates">${days} дней осталось</div>
+<div class="pass-dates">${daysText}</div>
 
 </div>
 
-<button class="pass-edit" onclick="editPass()">
+<button class="pass-edit" aria-label="Редактировать абонемент" onclick="editPass()">
 
 <svg viewBox="0 0 24 24" width="18" height="18">
 
@@ -706,14 +777,15 @@ ${visitsHTML || '<div class="small">Нет посещений</div>'}
 
                         let detailHTML = '';
                         if (isOpen) {
-                            let sorted = [...a.visits].sort((x, y) =>
-                                x < y ? 1 : -1,
-                            );
+                            let sorted = sortedVisits(a);
                             if (sorted.length) {
                                 detailHTML = `<div class="archive-detail">${sorted
                                     .map(
-                                        (v) =>
-                                            `<div class="archive-visit-item">📅 ${formatDate(v)}</div>`,
+                                        ({ date, origIndex }) => `
+<div class="archive-visit-item">
+  <span>📅 ${formatDate(date)}</span>
+  <button class="delete" aria-label="Удалить посещение" onclick="deletePassVisit(${a.id}, ${origIndex})">${TRASH_ICON}</button>
+</div>`,
                                     )
                                     .join('')}</div>`;
                             } else {
@@ -725,7 +797,7 @@ ${visitsHTML || '<div class="small">Нет посещений</div>'}
 <div class="archive-row${openClass}" onclick="toggleArchive(${a.id})">
   <div>
     <div style="font-size:14px;">${formatDate(a.start)} — ${formatDate(a.end)}</div>
-    <div class="small">${a.visits.length} из ${a.total} посещений</div>
+    <div class="small">${a.visits.length} из ${a.total} ${plural(a.total, 'посещения', 'посещений', 'посещений')}</div>
   </div>
   <span class="chevron">▼</span>
 </div>
@@ -774,9 +846,11 @@ ${detailHTML}`;
                 wrap.style.marginTop = '12px';
                 wrap.innerHTML = `
                     <div class="small" style="margin-bottom:4px;">Выделите всё и скопируйте:</div>
-                    <textarea readonly onclick="this.select()">${json}</textarea>`;
+                    <textarea readonly onclick="this.select()"></textarea>`;
                 document.getElementById('exportImportCard').appendChild(wrap);
-                wrap.querySelector('textarea').select();
+                let ta = wrap.querySelector('textarea');
+                ta.value = json;
+                ta.select();
             }
 
             let importVisible = false;
@@ -792,32 +866,62 @@ ${detailHTML}`;
                 }
             }
 
+            function isDateString(v) {
+                return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+            }
+
+            // поля абонемента попадают в разметку без экранирования,
+            // поэтому пропускаем только ожидаемые типы и форматы
+            function isValidPass(p) {
+                return (
+                    p !== null &&
+                    typeof p === 'object' &&
+                    Number.isInteger(p.id) &&
+                    isDateString(p.start) &&
+                    isDateString(p.end) &&
+                    Number.isInteger(p.total) &&
+                    p.total > 0 &&
+                    Array.isArray(p.visits) &&
+                    p.visits.every(isDateString) &&
+                    (p.status === 'active' || p.status === 'archived')
+                );
+            }
+
             function doImport() {
                 let ta = document.getElementById('importTextarea');
                 if (!ta) return;
-                let raw = ta.value.trim();
+
+                let parsed;
                 try {
-                    let parsed = JSON.parse(raw);
-                    if (!Array.isArray(parsed)) throw new Error();
-                    // базовая валидация структуры
-                    for (let p of parsed) {
-                        if (
-                            !p.id ||
-                            !p.start ||
-                            !p.end ||
-                            !Array.isArray(p.visits) ||
-                            !p.status
-                        )
-                            throw new Error();
-                    }
-                    data = parsed;
-                    save();
-                    importVisible = false;
-                    render();
-                    showToast('✅ Данные импортированы');
+                    parsed = JSON.parse(ta.value.trim());
                 } catch {
                     showToast('❌ Неверный формат JSON');
+                    return;
                 }
+
+                if (!Array.isArray(parsed) || !parsed.every(isValidPass)) {
+                    showToast('❌ Неверный формат данных');
+                    return;
+                }
+
+                if (
+                    data.length &&
+                    !confirm('Заменить все текущие данные импортированными?')
+                )
+                    return;
+
+                data = parsed.map(({ id, start, end, total, visits, status }) => ({
+                    id,
+                    start,
+                    end,
+                    total,
+                    visits,
+                    status,
+                }));
+                save();
+                importVisible = false;
+                render();
+                showToast('✅ Данные импортированы');
             }
 
             function renderFooter() {
@@ -880,6 +984,15 @@ ${detailHTML}`;
 
                 if (!p) return;
 
+                // после импорта количество может быть не из 1/4/8 — не теряем его
+                let totals = [...new Set([1, 4, 8, p.total])].sort((a, b) => a - b);
+                let totalOptions = totals
+                    .map(
+                        (n) =>
+                            `<option value="${n}" ${p.total === n ? 'selected' : ''}>${n}</option>`,
+                    )
+                    .join('');
+
                 document.getElementById('app').innerHTML = `
 
 <div class="card">
@@ -894,9 +1007,7 @@ ${detailHTML}`;
 
 <div class="small">Количество посещений</div>
 <select id="editTotal">
-<option value="1" ${p.total === 1 ? 'selected' : ''}>1</option>
-<option value="4" ${p.total === 4 ? 'selected' : ''}>4</option>
-<option value="8" ${p.total === 8 ? 'selected' : ''}>8</option>
+${totalOptions}
 </select>
 
 <div class="edit-buttons">
@@ -914,10 +1025,36 @@ ${detailHTML}`;
 
             function saveEdit() {
                 let p = activePass();
+                if (!p) return;
 
-                p.start = document.getElementById('editStart').value;
-                p.end = document.getElementById('editEnd').value;
-                p.total = parseInt(document.getElementById('editTotal').value);
+                let start = document.getElementById('editStart').value;
+                let end = document.getElementById('editEnd').value;
+                let total = parseInt(document.getElementById('editTotal').value);
+
+                if (!start || !end) {
+                    showToast('❌ Укажите даты');
+                    return;
+                }
+                if (end < start) {
+                    showToast('❌ Окончание раньше начала');
+                    return;
+                }
+                let used = p.visits.length;
+                if (total < used) {
+                    showToast(
+                        `❌ Уже отмечено ${used} ${plural(used, 'посещение', 'посещения', 'посещений')}`,
+                    );
+                    return;
+                }
+                if (
+                    isFinished({ ...p, end, total }) &&
+                    !confirm('Абонемент будет завершён и перенесён в архив. Сохранить?')
+                )
+                    return;
+
+                p.start = start;
+                p.end = end;
+                p.total = total;
 
                 save();
 
@@ -975,42 +1112,29 @@ ${detailHTML}`;
         </script>
         <script>
             if ('serviceWorker' in navigator) {
+                // новый SW сам вызывает skipWaiting() и clients.claim(),
+                // поэтому достаточно перезагрузиться, когда он возьмёт управление
                 navigator.serviceWorker.register('sw.js').then((reg) => {
                     // check for updates on load
                     reg.update();
-
-                    if (reg.waiting) {
-                        showToast('🆕 Обновление установлено…');
-                        setTimeout(() => {
-                            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-                        }, 1200);
-                    }
-
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-
-                        newWorker.addEventListener('statechange', () => {
-                            if (
-                                newWorker.state === 'installed' &&
-                                navigator.serviceWorker.controller
-                            ) {
-                                // уведомляем пользователя и активируем новый SW
-                                showToast('🆕 Обновление установлено…');
-                                setTimeout(() => {
-                                    newWorker.postMessage({
-                                        type: 'SKIP_WAITING',
-                                    });
-                                }, 1200);
-                            }
-                        });
-                    });
                 });
 
-                // reload page when the new service worker takes control
+                // при первом открытии контроллера ещё нет: claim() — это не обновление
+                let hadController = !!navigator.serviceWorker.controller;
+                let reloading = false;
+
                 navigator.serviceWorker.addEventListener(
                     'controllerchange',
                     () => {
-                        window.location.reload();
+                        if (!hadController) {
+                            hadController = true;
+                            return;
+                        }
+                        if (reloading) return;
+                        reloading = true;
+
+                        showToast('🆕 Обновление установлено…');
+                        setTimeout(() => window.location.reload(), 1200);
                     },
                 );
             }

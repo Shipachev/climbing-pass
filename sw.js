@@ -1,4 +1,4 @@
-const CACHE_VERSION = '24.3';
+const CACHE_VERSION = '24.4';
 
 const APP_SHELL = [
     './',
@@ -9,11 +9,23 @@ const APP_SHELL = [
     './sw.js',
 ];
 
+// кешируем только успешные ответы: иначе ошибка сервера станет офлайн-версией
+function putInCache(request, response) {
+    if (!response.ok) return;
+    const clone = response.clone();
+    caches.open(CACHE_VERSION).then((cache) => {
+        cache.put(request, clone);
+    });
+}
+
 // INSTALL
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_VERSION).then((cache) => {
-            return cache.addAll(APP_SHELL);
+            // cache: 'reload' — мимо HTTP-кеша, чтобы новая версия не взяла старые файлы
+            return cache.addAll(
+                APP_SHELL.map((url) => new Request(url, { cache: 'reload' })),
+            );
         }),
     );
     self.skipWaiting();
@@ -46,16 +58,15 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
-                    const clone = response.clone();
-                    caches.open(CACHE_VERSION).then((cache) => {
-                        cache.put(event.request, clone);
-                    });
+                    putInCache(event.request, response);
                     return response;
                 })
-                .catch(
-                    () =>
-                        caches.match(event.request) ||
-                        caches.match('./index.html'),
+                .catch(() =>
+                    caches
+                        .match(event.request)
+                        .then(
+                            (cached) => cached || caches.match('./index.html'),
+                        ),
                 ),
         );
         return;
@@ -66,29 +77,16 @@ self.addEventListener('fetch', (event) => {
         caches.match(event.request).then((cached) => {
             if (cached) {
                 // Параллельно обновляем кеш (stale-while-revalidate)
-                fetch(event.request).then((response) => {
-                    const clone = response.clone();
-                    caches.open(CACHE_VERSION).then((cache) => {
-                        cache.put(event.request, clone);
-                    });
-                });
+                fetch(event.request)
+                    .then((response) => putInCache(event.request, response))
+                    .catch(() => {});
                 return cached;
             }
 
             return fetch(event.request).then((response) => {
-                const clone = response.clone();
-                caches.open(CACHE_VERSION).then((cache) => {
-                    cache.put(event.request, clone);
-                });
+                putInCache(event.request, response);
                 return response;
             });
         }),
     );
-});
-
-// FORCE UPDATE FROM PAGE
-self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-    }
 });
