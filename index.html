@@ -523,11 +523,14 @@
             }
 
             let data = JSON.parse(localStorage.getItem('climb_pass') || '[]');
-            let expandedArchiveId = null;
-            const screens = ['home', 'history', 'archive', 'settings'];
-            let currentScreen = screens.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
+            const screens = ['home', 'history', 'settings'];
+            function screenFromHash() {
+                const screen = location.hash.slice(1);
+                return screen === 'archive' ? 'history' : screens.includes(screen) ? screen : 'home';
+            }
+            let currentScreen = screenFromHash();
             window.addEventListener('hashchange', () => {
-                currentScreen = screens.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
+                currentScreen = screenFromHash();
                 render();
                 window.scrollTo(0, 0);
             });
@@ -681,7 +684,6 @@
                 // случайно отмеченное последнее посещение: абонемент снова действует
                 if (p.status === 'archived' && !activePass() && !isFinished(p)) {
                     p.status = 'active';
-                    expandedArchiveId = null;
                     showToast('Абонемент снова активен');
                 }
 
@@ -801,60 +803,6 @@ ${warnMsg}
 
 
 `;
-            }
-
-            function toggleArchive(id) {
-                expandedArchiveId = expandedArchiveId === id ? null : id;
-                render();
-            }
-
-            function renderArchive() {
-                let archive = data
-                    .filter((x) => x.status === 'archived')
-                    .sort((a, b) => (a.end < b.end ? 1 : -1));
-                if (!archive.length) {
-                    return `<div class="card"><h3>Архив абонементов</h3><div class="small">Архив пуст</div></div>`;
-                }
-
-                // #8: сортируем визиты по убыванию внутри каждого архивного абонемента
-                let html = archive
-                    .map((a) => {
-                        let isOpen = expandedArchiveId === a.id;
-                        let openClass = isOpen ? ' open' : '';
-
-                        let detailHTML = '';
-                        if (isOpen) {
-                            let sorted = sortedVisits(a);
-                            if (sorted.length && !canDeletePassVisit(a)) {
-                                detailHTML = `<div class="archive-detail">${renderCompactVisits(a)}</div>`;
-                            } else if (sorted.length) {
-                                detailHTML = `<div class="archive-detail">${sorted
-                                    .map(
-                                        ({ date, origIndex }) => `
-<div class="archive-visit-item">
-  <span>📅 ${formatDate(date)}</span>
-  ${canDeletePassVisit(a) ? `<button class="delete" aria-label="Удалить посещение" onclick="deletePassVisit(${a.id}, ${origIndex})">${TRASH_ICON}</button>` : ''}
-</div>`,
-                                    )
-                                    .join('')}</div>`;
-                            } else {
-                                detailHTML = `<div class="archive-detail"><div class="archive-visit-item">Посещений не было</div></div>`;
-                            }
-                        }
-
-                        return `
-<div class="archive-row${openClass}" role="button" tabindex="0" aria-expanded="${isOpen}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleArchive(${a.id})}" onclick="toggleArchive(${a.id})">
-  <div>
-    <div style="font-size:14px;">${formatDate(a.start)} — ${formatDate(a.end)}</div>
-    <div class="small">${a.visits.length} из ${a.total} ${plural(a.total, 'посещения', 'посещений', 'посещений')}</div>
-  </div>
-  <span class="chevron">▼</span>
-</div>
-${detailHTML}`;
-                    })
-                    .join('');
-
-                return `<div class="card"><h3>Архив абонементов</h3>${html}</div>`;
             }
 
             function showToast(msg) {
@@ -1007,10 +955,9 @@ ${detailHTML}`;
                 const icons = {
                     home: '<path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/>',
                     history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-                    archive: '<rect x="3" y="3" width="18" height="5" rx="1"/><path d="M5 8v13h14V8M10 12h4"/>',
                     settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="white"/><circle cx="15" cy="17" r="3" fill="white"/>'
                 };
-                const labels = { home:'Главная', history:'История', archive:'Архив', settings:'Настройки' };
+                const labels = { home:'Главная', history:'История', settings:'Настройки' };
                 return `<nav class="bottom-nav" aria-label="Основная навигация">${screens.map(screen => `<button class="nav-item ${currentScreen === screen ? 'active' : ''}" ${currentScreen === screen ? 'aria-current="page"' : ''} onclick="location.hash='${screen}'"><svg aria-hidden="true" viewBox="0 0 24 24">${icons[screen]}</svg>${labels[screen]}</button>`).join('')}</nav>`;
             }
 
@@ -1031,7 +978,7 @@ ${detailHTML}`;
 
             function renderHistory() {
                 const passes = data
-                    .filter(pass => pass.status === 'archived' && pass.visits.length)
+                    .filter(pass => pass.status === 'archived')
                     .slice()
                     .sort((a, b) => b.start.localeCompare(a.start) || b.id - a.id);
 
@@ -1048,7 +995,7 @@ ${detailHTML}`;
     <div class="visit">
         <strong>${formatDate(date)}</strong>
         ${canDeletePassVisit(pass) ? `<button class="delete" aria-label="Удалить посещение ${formatDate(date)}" onclick="deletePassVisit(${pass.id}, ${origIndex})">${TRASH_ICON}</button>` : ''}
-    </div>`).join('')}
+    </div>`).join('') || '<div class="small" style="margin-top:12px;">Посещений не было</div>'}
 </section>`).join('');
             }
 
@@ -1063,8 +1010,7 @@ ${detailHTML}`;
                     if (p) html += renderActiveHistory(p);
                 } else if (currentScreen === 'history') {
                     html += renderHistory();
-                } else if (currentScreen === 'archive') {
-                    html += renderArchive();
+
                 } else {
                     html += renderFooter();
                 }
