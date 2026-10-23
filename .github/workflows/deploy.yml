@@ -1,26 +1,27 @@
 name: Deploy PWA
 
 on:
-    push:
-        branches:
-            - master
+  push:
+    branches:
+      - master
 
 jobs:
-    deploy:
-        runs-on: ubuntu-latest
+  deploy:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-
-            - name: Deploy via SSH
-              uses: appleboy/ssh-action@v1.0.3
-              with:
-                  host: ${{ secrets.SERVER_HOST }}
-                  username: ${{ secrets.SERVER_USER }}
-                  key: ${{ secrets.SERVER_SSH_KEY }}
-                  script: |
-                      set -e
-                      cd /home/sites/app.shipachev.com/www/climb-pass
-                      git pull origin master
-                      echo "✅ Deployed at $(date '+%Y-%m-%d %H:%M:%S')"
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -eu
+            cd /srv/repos/climbing-pass
+            git pull --ff-only origin master
+            install -d -m 755 /srv/www/app.shipachev.com/climb-pass/public
+            install -m 644 \
+              index.html manifest.json sw.js icon-192.png icon-512.png \
+              /srv/www/app.shipachev.com/climb-pass/public/
+            echo "Deployed $(git rev-parse --short HEAD)"
