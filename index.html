@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta
             name="viewport"
-            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+            content="width=device-width, initial-scale=1.0, viewport-fit=cover"
         />
 
         <title>ClimbPass</title>
@@ -14,7 +14,7 @@
         />
         <link rel="manifest" href="manifest.json" />
 
-        <meta name="theme-color" content="#ff6b2c" />
+        <meta name="theme-color" content="#f6f7f9" />
 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -442,6 +442,54 @@
                 height: 16px;
                 fill: var(--muted);
             }
+
+            .compact-visits { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 0; padding:0; list-style:none; }
+            .compact-visits li { padding:5px 9px; border-radius:8px; background:var(--bg); color:var(--muted); font-size:12px; font-weight:500; font-variant-numeric:tabular-nums; }
+            /* Modern mobile shell */
+            :root { --bg:#f6f7f9; --card:#fff; --text:#20252b; --muted:#68717e; --border:#e7eaee; --accent:#ef652f; --accent2:#ff9865; }
+            * { box-sizing:border-box; }
+            body { line-height:1.5; }
+            .container { max-width:560px; padding:28px 20px calc(110px + env(safe-area-inset-bottom)); }
+            .app-header { display:flex; align-items:center; gap:10px; margin-bottom:30px; font-size:19px; font-weight:800; letter-spacing:-.6px; }
+            .brand-mark { display:grid; place-items:center; width:35px; height:35px; background:var(--accent); color:white; border-radius:12px; }
+            .brand-mark svg { width:24px; height:24px; }
+            .eyebrow { color:var(--accent); font-size:11px; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
+            h1 { font-size:32px; line-height:1.15; letter-spacing:-1.2px; margin:8px 0; }
+            .screen-intro { margin:0 0 26px; color:var(--muted); font-size:14px; }
+            h3 { margin:0 0 18px; font-size:18px; letter-spacing:-.4px; }
+            .card { padding:24px; border:1px solid var(--border); border-radius:24px; box-shadow:none; margin-bottom:18px; }
+            .pass-card { background:#252c35; box-shadow:0 16px 28px #242b3518; padding:26px; border-radius:28px; }
+            .pass-card.warn { background:#71382e; }
+            .pass-title { font-size:12px; text-transform:uppercase; letter-spacing:1.7px; color:#ffac86; margin-bottom:10px; }
+            .pass-dates { font-size:13px; color:#d2d7dd; opacity:1; }
+            .pass-visits { font-size:88px; line-height:1.15; letter-spacing:-5px; margin-top:22px; }
+            .pass-label { color:#d2d7dd; opacity:1; }
+            .progress-bar { height:6px; margin-top:24px; background:#ffffff24; }
+            .progress-fill { background:#ff9969; }
+            .pass-actions { margin-top:24px; }
+            button { font-family:inherit; font-weight:600; min-height:46px; transition:background .15s,transform .15s; }
+            button:active { transform:translateY(1px); }
+            button:focus-visible, a:focus-visible, .archive-row:focus-visible { outline:3px solid #ef652f; outline-offset:4px; }
+            .primary { background:var(--accent); border-radius:16px; min-height:54px; }
+            .pass-edit { background:#ffffff12; width:44px; padding:10px; border-radius:14px; }
+            .small { color:var(--muted); line-height:1.6; }
+            input,select { margin-top:6px; margin-bottom:20px; padding:14px; background:var(--bg); border-radius:14px; font-family:inherit; color:var(--text); user-select:text; -webkit-user-select:text; }
+            .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:560px; display:flex; padding:10px 10px calc(10px + env(safe-area-inset-bottom)); background:#fffffffa; border-top:1px solid var(--border); z-index:100; }
+            .nav-item { flex:1; display:flex; align-items:center; flex-direction:column; gap:5px; background:transparent; color:var(--muted); font-size:11px; padding:8px 2px; border-radius:14px; }
+            .nav-item svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+            .nav-item.active { color:#c34b1b; background:#fff0e8; }
+            .empty-state { padding:24px 0; text-align:center; }
+            .empty-symbol { font-size:32px; color:var(--accent); margin-bottom:12px; }
+            .visit { gap:12px; padding:16px 0; }
+            .visit:last-child { border-bottom:0; }
+            .delete { min-width:44px; min-height:44px; display:grid; place-items:center; border-radius:12px; background:var(--bg); }
+            .delete svg { fill:#7b8490; }
+            .archive-row { gap:14px; padding:18px 0; }
+            .footer-help { margin:22px 0; }
+            .toast { bottom:calc(100px + env(safe-area-inset-bottom)); max-width:calc(100% - 32px); white-space:normal; width:max-content; text-align:center; }
+            .help-modal { max-height:85dvh; overflow:auto; }
+            @media (min-width:700px) { .container { padding-top:48px; } .bottom-nav { border:1px solid var(--border); border-bottom:0; border-radius:24px 24px 0 0; } }
+            @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
         </style>
     </head>
 
@@ -476,6 +524,13 @@
 
             let data = JSON.parse(localStorage.getItem('climb_pass') || '[]');
             let expandedArchiveId = null;
+            const screens = ['home', 'history', 'archive', 'settings'];
+            let currentScreen = screens.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
+            window.addEventListener('hashchange', () => {
+                currentScreen = screens.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
+                render();
+                window.scrollTo(0, 0);
+            });
 
             function save() {
                 localStorage.setItem('climb_pass', JSON.stringify(data));
@@ -608,9 +663,17 @@
                 });
             }
 
+            function canDeletePassVisit(pass) {
+                return pass.status !== 'archived' || !activePass();
+            }
+
             function deletePassVisit(passId, visitIndex) {
                 let p = data.find((x) => x.id === passId);
                 if (!p) return;
+                if (!canDeletePassVisit(p)) {
+                    showToast('Нельзя удалить посещение завершённого абонемента, пока есть действующий');
+                    return;
+                }
                 if (!confirm('Удалить это посещение?')) return;
 
                 p.visits.splice(visitIndex, 1);
@@ -655,7 +718,7 @@
 <option value="8" selected>8</option>
 </select>
 
-<button class="primary" onclick="createPass()">Давай-давай-давай!</button>
+<button class="primary" onclick="createPass()">Добавить абонемент</button>
 
 </div>
 `;
@@ -686,16 +749,6 @@
                     days === 0
                         ? 'последний день'
                         : `${days} ${plural(days, 'день остался', 'дня осталось', 'дней осталось')}`;
-
-                let visitsHTML = sortedVisits(p)
-                    .map(
-                        ({ date, origIndex }) => `
-<div class="visit">
-  <div>${formatDate(date)}</div>
-  <button class="delete" aria-label="Удалить посещение" onclick="deletePassVisit(${p.id}, ${origIndex})">${TRASH_ICON}</button>
-</div>`,
-                    )
-                    .join('');
 
                 return `
 
@@ -745,13 +798,7 @@ ${warnMsg}
 
 </div>
 
-<div class="card">
 
-<h3>История посещений</h3>
-
-${visitsHTML || '<div class="small">Нет посещений</div>'}
-
-</div>
 
 `;
             }
@@ -778,13 +825,15 @@ ${visitsHTML || '<div class="small">Нет посещений</div>'}
                         let detailHTML = '';
                         if (isOpen) {
                             let sorted = sortedVisits(a);
-                            if (sorted.length) {
+                            if (sorted.length && !canDeletePassVisit(a)) {
+                                detailHTML = `<div class="archive-detail">${renderCompactVisits(a)}</div>`;
+                            } else if (sorted.length) {
                                 detailHTML = `<div class="archive-detail">${sorted
                                     .map(
                                         ({ date, origIndex }) => `
 <div class="archive-visit-item">
   <span>📅 ${formatDate(date)}</span>
-  <button class="delete" aria-label="Удалить посещение" onclick="deletePassVisit(${a.id}, ${origIndex})">${TRASH_ICON}</button>
+  ${canDeletePassVisit(a) ? `<button class="delete" aria-label="Удалить посещение" onclick="deletePassVisit(${a.id}, ${origIndex})">${TRASH_ICON}</button>` : ''}
 </div>`,
                                     )
                                     .join('')}</div>`;
@@ -794,7 +843,7 @@ ${visitsHTML || '<div class="small">Нет посещений</div>'}
                         }
 
                         return `
-<div class="archive-row${openClass}" onclick="toggleArchive(${a.id})">
+<div class="archive-row${openClass}" role="button" tabindex="0" aria-expanded="${isOpen}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleArchive(${a.id})}" onclick="toggleArchive(${a.id})">
   <div>
     <div style="font-size:14px;">${formatDate(a.start)} — ${formatDate(a.end)}</div>
     <div class="small">${a.visits.length} из ${a.total} ${plural(a.total, 'посещения', 'посещений', 'посещений')}</div>
@@ -937,11 +986,6 @@ ${detailHTML}`;
                     : '';
 
                 return `
-<div class="footer-help">
-  <a href="#" onclick="openHelp();return false;"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px;fill:currentColor;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>Инструкция</a>
-  <span style="margin:0 8px;opacity:0.3;">·</span>
-  <a href="https://t.me/shipachev" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px;fill:currentColor;"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>@shipachev</a>
-</div>
 <div class="card" id="exportImportCard">
   <div style="font-size:15px;font-weight:600;margin-bottom:4px;">Резервная копия</div>
   <div class="small">Экспортируйте данные перед сменой браузера или устройства</div>
@@ -951,7 +995,61 @@ ${detailHTML}`;
   </div>
   ${importBlock}
 </div>
+<div class="footer-help">
+  <a href="#" onclick="openHelp();return false;"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px;fill:currentColor;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>Инструкция</a>
+  <span style="margin:0 8px;opacity:0.3;">·</span>
+  <a href="https://t.me/shipachev" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px;fill:currentColor;"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>@shipachev</a>
+</div>
 <div style="text-align:center;margin-top:16px;margin-bottom:40px;font-size:13px;opacity:0.35;" id="appVersion"></div>`;
+            }
+
+            function renderNavigation() {
+                const icons = {
+                    home: '<path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/>',
+                    history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+                    archive: '<rect x="3" y="3" width="18" height="5" rx="1"/><path d="M5 8v13h14V8M10 12h4"/>',
+                    settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="white"/><circle cx="15" cy="17" r="3" fill="white"/>'
+                };
+                const labels = { home:'Главная', history:'История', archive:'Архив', settings:'Настройки' };
+                return `<nav class="bottom-nav" aria-label="Основная навигация">${screens.map(screen => `<button class="nav-item ${currentScreen === screen ? 'active' : ''}" ${currentScreen === screen ? 'aria-current="page"' : ''} onclick="location.hash='${screen}'"><svg aria-hidden="true" viewBox="0 0 24 24">${icons[screen]}</svg>${labels[screen]}</button>`).join('')}</nav>`;
+            }
+
+            function renderCompactVisits(pass) {
+                return `<ul class="compact-visits" aria-label="Даты посещений">${sortedVisits(pass).map(({ date }) => `<li><time datetime="${date}">${formatDate(date)}</time></li>`).join('')}</ul>`;
+            }
+
+            function renderActiveHistory(pass) {
+                return `<section class="card" aria-label="История действующего абонемента">
+    <h3>История посещений</h3>
+    ${sortedVisits(pass).map(({ date, origIndex }) => `
+    <div class="visit">
+        <strong>${formatDate(date)}</strong>
+        <button class="delete" aria-label="Удалить посещение ${formatDate(date)}" onclick="deletePassVisit(${pass.id}, ${origIndex})">${TRASH_ICON}</button>
+    </div>`).join('') || '<div class="small">Пока нет посещений</div>'}
+</section>`;
+            }
+
+            function renderHistory() {
+                const passes = data
+                    .filter(pass => pass.status === 'archived' && pass.visits.length)
+                    .slice()
+                    .sort((a, b) => b.start.localeCompare(a.start) || b.id - a.id);
+
+                if (!passes.length) {
+                    return '<div class="card"><div class="empty-state"><div class="empty-symbol">↗</div><h3>Пока нет завершённых абонементов</h3><div class="small">После завершения абонемента его посещения появятся здесь.</div></div></div>';
+                }
+
+                return passes.map(pass => `
+<section class="card" aria-label="Абонемент ${formatDate(pass.start)} — ${formatDate(pass.end)}">
+    <h3 style="margin-bottom:4px;">${pass.total === 1 ? 'Разовое посещение' : 'Абонемент'}</h3>
+    <div class="small">${formatDate(pass.start)} — ${formatDate(pass.end)}</div>
+    <div class="small">${pass.status === 'active' ? 'Действующий' : 'Завершённый'} · ${pass.visits.length} из ${pass.total}</div>
+    ${!canDeletePassVisit(pass) ? renderCompactVisits(pass) : sortedVisits(pass).map(({ date, origIndex }) => `
+    <div class="visit">
+        <strong>${formatDate(date)}</strong>
+        ${canDeletePassVisit(pass) ? `<button class="delete" aria-label="Удалить посещение ${formatDate(date)}" onclick="deletePassVisit(${pass.id}, ${origIndex})">${TRASH_ICON}</button>` : ''}
+    </div>`).join('')}
+</section>`).join('');
             }
 
             function render() {
@@ -959,16 +1057,18 @@ ${detailHTML}`;
 
                 let p = activePass();
 
-                let html = '<h1>🧗 ClimbPass</h1>';
-
-                if (p) {
-                    html += renderPassCard(p);
+                let html = `<header class="app-header"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 19 7-12 4 7 3-5 4 10H3Z"/></svg></span>ClimbPass</header><main>`;
+                if (currentScreen === 'home') {
+                    html += p ? renderPassCard(p) : renderCreate();
+                    if (p) html += renderActiveHistory(p);
+                } else if (currentScreen === 'history') {
+                    html += renderHistory();
+                } else if (currentScreen === 'archive') {
+                    html += renderArchive();
                 } else {
-                    html += renderCreate();
+                    html += renderFooter();
                 }
-
-                html += renderArchive();
-                html += renderFooter();
+                html += '</main>' + renderNavigation();
 
                 document.getElementById('app').innerHTML = html;
 

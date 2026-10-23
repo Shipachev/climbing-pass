@@ -1,4 +1,4 @@
-const CACHE_VERSION = '24.4';
+const CACHE_VERSION = '25.7';
 
 const APP_SHELL = [
     './',
