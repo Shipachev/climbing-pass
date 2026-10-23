@@ -16,12 +16,4 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            set -eu
-            cd /srv/repos/climbing-pass
-            git pull --ff-only origin master
-            install -d -m 755 /srv/www/app.shipachev.com/climb-pass/public
-            install -m 644 \
-              index.html manifest.json sw.js icon-192.png icon-512.png \
-              /srv/www/app.shipachev.com/climb-pass/public/
-            echo "Deployed $(git rev-parse --short HEAD)"
+          script: /usr/local/bin/climb-pass-deploy
