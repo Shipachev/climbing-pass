@@ -134,6 +134,13 @@ def housekeeping(state):
             print('Unfinished release retained for administrative audit:', candidate.name)
 
 
+def read_deploy_config(path):
+    st=path.stat()
+    if path.is_symlink() or st.st_uid!=0 or st.st_mode & 0o077:
+        raise ValueError('Deployment config must be root-owned, mode 600')
+    return json.loads(path.read_text())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--require-tip', action='store_true')
@@ -148,10 +155,7 @@ def main():
     if os.geteuid() != 0 or not os.path.ismount('/srv'):
         parser.error('Requires root and mounted /srv')
     os.umask(0o077)
-    st = CONFIG.stat()
-    if CONFIG.is_symlink() or st.st_uid != 0 or st.st_mode & 0o077:
-        parser.error('Config must be root-owned, mode 600')
-    config = json.loads(CONFIG.read_text())
+    config = read_deploy_config(CONFIG)
     branch, build_user = config['branch'], config['build_user']
     if not re.fullmatch('[a-zA-Z0-9._/-]+', branch) or branch.startswith('-'):
         parser.error('Invalid publication branch')
@@ -190,6 +194,11 @@ def main():
             parser.error('Existing unverified release requires administrative audit; no automatic overwrite')
         if args.rollback and not known:
             parser.error('Rollback requires a retained successful release')
+        if previous == release and known:
+            version=ready(release,port)
+            print('ClimbPass release version:',version,flush=True)
+            print('Already active and ready Git commit:',args.commit,flush=True)
+            return
         # Uses the existing site-backup implementation and its own common lock.
         # Call it before acquiring that same lock here to avoid recursive deadlock.
         if args.local_only and previous is None:
