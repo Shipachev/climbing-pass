@@ -112,5 +112,24 @@ class DatabasePreparationTests(unittest.TestCase):
                 module.check_credentials(client, secret)
 
 
+class ReleasePermissionsTests(unittest.TestCase):
+    def test_closed_build_umask_becomes_readable_but_not_writable_for_runtime(self):
+        from unittest import mock
+        publisher = load('climbpass-deploy')
+        with tempfile.TemporaryDirectory() as directory:
+            release = Path(directory).resolve()
+            dependency = release / 'node_modules' / 'dependency'
+            dependency.mkdir(parents=True)
+            dependency.chmod(0o700)
+            module = dependency / 'index.js'
+            module.write_text('export default true;')
+            module.chmod(0o600)
+            with mock.patch.object(publisher.os, 'chown'):
+                publisher.ownership(release, 'root')
+            self.assertEqual(dependency.stat().st_mode & 0o777, 0o755)
+            self.assertEqual(module.stat().st_mode & 0o777, 0o644)
+            self.assertEqual(module.stat().st_mode & 0o022, 0)
+
+
 if __name__ == '__main__':
     unittest.main()

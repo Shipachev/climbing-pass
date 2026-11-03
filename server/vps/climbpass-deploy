@@ -54,7 +54,10 @@ def ownership(release, user):
                 raise ValueError('Release contains an external symlink')
             os.chown(path, identity.pw_uid, identity.pw_gid, follow_symlinks=False)
             if user == 'root' and not path.is_symlink():
-                path.chmod(path.stat().st_mode & 0o777 & ~0o022)
+                # npm inherits deployment umask 077. Make dependency files
+                # readable by runtime without granting it write permission.
+                original_mode = path.stat().st_mode
+                path.chmod(0o755 if path.is_dir() or original_mode & 0o111 else 0o644)
 
 
 def ready(release, port, local_only=False):
