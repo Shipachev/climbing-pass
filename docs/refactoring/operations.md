@@ -1,232 +1,106 @@
-# Подготовка выпуска ClimbPass на VPS
+# Эксплуатация ClimbPass
 
-Статус: локальная проверка принята пользователем; Google OAuth client создан; серверные настройки ClimbPass **ещё не установлены и не проверены**. К VPS пользователь подключается самостоятельно. Настоящий документ — проектный порядок подготовки, не реестр фактических настроек сервера.
+Production введён в эксплуатацию 03.11.2026. Публичный адрес: https://climb-pass.app.shipachev.com/. Результаты проверок собраны в [приёмке](acceptance.md).
 
-## Основные источники и границы
+## Размещение и доступ
 
-Использовать подключённый проект [VPS](/Users/maximshipachev/Developer/VPS/README.md). В нём прочитаны регламент добавления проекта, PROJECTS, HTTPS, backup, release policy, deploy, контракт Bellboy и точные исходники соответствующих инструментов. Документы этой папки не изменяются без разрешения пользователя.
-
-Владельцы общих правил:
-
-- [NEW_PROJECT_GUIDE](/Users/maximshipachev/Developer/VPS/NEW_PROJECT_GUIDE.md) — порядок размещения и минимальные необходимые отступления.
-- [PROJECTS](/Users/maximshipachev/Developer/VPS/PROJECTS.md) — адреса, службы, том, runtime, порты и права; сведения имеют собственные даты проверки и требуют адресного подтверждения перед изменением.
-- [HTTPS](/Users/maximshipachev/Developer/VPS/HTTPS_VPS_GUIDE.md) — существующий wildcard, без нового сертификата для ClimbPass.
-- [BACKUP_COVERAGE](/Users/maximshipachev/Developer/VPS/BACKUP_COVERAGE.md) — общий site-backup, его расписание, конфиги, locks, проверка S3.
-- [RELEASE_POLICY](/Users/maximshipachev/Developer/VPS/RELEASE_POLICY.md) — текущий + два предыдущих успешных релиза, защита используемых файлов и согласование с backup.
-- [GITHUB_ACTIONS_VPS_AUTODEPLOY_GUIDE](/Users/maximshipachev/Developer/VPS/GITHUB_ACTIONS_VPS_AUTODEPLOY_GUIDE.md) — exact SHA, отдельные build/runtime/deploy, root-owned trigger и закреплённые SSH host keys.
-
-Прежние примеры самостоятельного SQL-backup/таймеров, /srv/climbpass/shared/.env, sudo-команд административной сессии и выполнения root-деплоя непосредственно из application checkout заменены этой схемой. Не запускать старые примеры из истории обсуждения.
-
-## Выбор для ClimbPass
-
-| Область | Проектное решение, пока не установленное |
+| Компонент | Настройка |
 | --- | --- |
-| Домен | https://climb-pass.app.shipachev.com |
-| Repository / branch | Shipachev/climbing-pass, master, полный зафиксированный SHA |
-| HTTP | Существующий внешний NGINX, точный server_name и proxy всех UI/API/OAuth-путей; общий статический apps-auto не подходит Node-серверу |
-| TLS | Действующий wildcard по владельцу HTTPS; новый Certbot/сертификат не создаётся |
-| БД | Существующий MySQL 8.4, отдельная схема/учётная запись climbpass, без изменения глобального MySQL |
-| Runtime | Отдельный непривилегированный production-процесс. Сначала проверить наличие совместимого host Node >=22.12; глобальный runtime не устанавливать/не обновлять без оценки. Если host Node отсутствует — проверить существующую контейнерную схему, не копировать исключения Wally автоматически |
-| Пользователи | climbpass runtime, climbpass-build сборка, climbpass-deploy ограниченный CI-доступ; все имена перед созданием проверить |
-| Размещение | /srv/repos/climbpass checkout; /srv/climbpass/releases/SHA; /srv/climbpass/current; /etc/climbpass/climbpass.env root:root 600 через systemd EnvironmentFile. Точные пути — кандидаты до аудита |
-| Порт | 127.0.0.1:9083 — кандидат, свободность пока не подтверждена |
-| Backup | Штатный site-backup: MySQL dump отдельной схемы и files-снимок только активного релиза + project config/keys/units. Новых S3-ключей и таймеров нет |
-| Deploy | Та же модель, что у подтверждённого Bellboy: root-owned конфиг/entrypoint, build от отдельного пользователя, exact SHA из Git, project-lock → common backup lock, readiness → success ledger → безопасная очистка |
-| Уведомления | Новая рассылка Bellboy пока не включается: рабочие события отдельно не поручены. Контракт не является разрешением отправлять тестовые сообщения |
+| Backend | Node.js >=22.12, MySQL 8, systemd-служба `climbpass` |
+| Внутренний адрес | `127.0.0.1:9083` |
+| Публичный доступ | NGINX, HTTPS с действующим wildcard-сертификатом |
+| Runtime / build / deploy | `climbpass` / `climbpass-build` / `climbpass-deploy` |
+| Репозиторий сборки | `/srv/repos/climbpass` |
+| Релизы и активная ссылка | `/srv/climbpass/releases/<SHA>`, `/srv/climbpass/current` |
+| Реестр успешных релизов | `/srv/climbpass/successful-releases.json` |
+| Runtime env | `/etc/climbpass/climbpass.env`, root:root, `0600` |
+| Конфигурация публикации | `/etc/climbpass/deploy.json`, root:root, `0600` |
+| NGINX | `/etc/nginx/sites-available/climbpass.conf` и ссылка в `sites-enabled` |
 
-Это штатные варианты существующего регламента, а не требование унификации UI/ORM с Wally. Нужное отличие — Node/MySQL вместо Python/SQLite Bellboy; TLS, доступ, locks, backup и release policy сохраняются.
+Runtime не изменяет код релиза. Сборка выполняется отдельным непривилегированным пользователем без production env. Секреты читает systemd manager и передаёт только нужному процессу. База и отдельный DB-user ограничены схемой `climbpass`.
 
-## Подготовленные файлы проекта
+Общие правила VPS, TLS, backup и release policy принадлежат подключённой документации VPS. Они не дублируются здесь и не изменяются вместе с кодом приложения.
 
-`server/vps/` содержит **кандидатные**, ещё не установленные service, NGINX config, sudoers, deploy config, restricted SSH wrapper/trigger, backup-snapshot helper, site-backup config и drop-in. Wrapper/trigger и snapshot адаптированы из точных Bellboy-исходников подключённого проекта; MySQL дамп не подменяется SQLite или tar живой БД. Общие серверные инструменты не меняются.
+## Локальная настройка и Google-вход
 
-Root-owned publisher `/usr/local/sbin/climbpass-deploy` подготовлен в server/vps/climbpass-deploy под подтверждённый host Node; ещё требуется установить его из проверенного commit и проверить ручную публикацию/rollback на VPS. Подготовленные wrappers не являются готовым установленным деплоем. `scripts/deploy.sh` теперь лишь административный вызов этого фиксированного entrypoint. Старый упрощённый скрипт, выполнявший npm от вызывающего root и не учитывавший общий backup lock/retention, больше не используется.
+Подготовить MySQL-базу и `.env` по [.env.example](../../.env.example). `APP_ORIGIN` задаётся без завершающего `/`. OAuth-клиент Google имеет тип Web application; redirect URI — `<APP_ORIGIN>/auth/callback`. Для production это `https://climb-pass.app.shipachev.com/auth/callback`. Client ID и secret хранятся в env, а не в Git или GitHub Actions.
 
-`server/production.env.example` содержит домен и кандидатный порт. Реальный секрет не хранится в Git. Production unit принимает env через systemd manager; для миграции/серверного импорта также использовать отдельное systemd-задание с User=climbpass и EnvironmentFile, а не запуск Node от root или раскрытие root-only env build-пользователю.
+После установки зависимостей выполнить миграции и разрешить нужный email:
 
-`site-backup.json.example` требует существования каждого указанного пути до включения в общее расписание. TLS уже относится к vps-common. Snapshot берёт project-lock, затем common backup lock, фиксирует current target и копирует только его; node_modules пока **не исключается**, поскольку восстановление зависимостей в целевом VPS-контексте ещё не подтверждено. Внешние symlink в активном коде вызывают отказ до определения их покрытия. MySQL/files остаются раздельными наборами общего backup, не заявляются единым атомарным снимком.
-
-Drop-in добавляет ExecStartPre существующей файловой службы: его отказ блокирует общее files-задание. Поэтому установить только после адресной успешной проверки helper. Ручной `site-backup files --site ...` сам helper не запускает: `scripts/backup.sh files` выполняет оба шага. Схема и ограничения соответствуют владельцу backup, без своего S3-клиента.
-
-## Первый серверный этап: только чтение
-
-Следующий блок выполняется **на VPS от root, без sudo**. Он не меняет сервер, не выводит env/ключи/пароли и не запускает деплой:
-
-```bash
-whoami
-hostname
-findmnt /srv
-df -h /srv
-free -h
-command -v node || true
-node --version 2>/dev/null || true
-command -v npm || true
-npm --version 2>/dev/null || true
-mysql --version
-ss -ltnp
-getent passwd climbpass climbpass-build climbpass-deploy || true
-ls -ld /srv/repos/climbpass /srv/climbpass /etc/climbpass /srv/www/app.shipachev.com/climb-pass /srv/www/app.shipachev.com/climb-pass/public 2>/dev/null || true
-ls -l /usr/local/bin/climb-pass-deploy /usr/local/sbin/climbpass-deploy /etc/nginx/sites-enabled/*climb* 2>/dev/null || true
-systemctl show site-backup-files.service -p FragmentPath -p DropInPaths -p ExecStartPre -p ExecStart
-systemctl is-active nginx mysql site-backup-files.timer site-backup-databases.timer
+```sh
+npm run migrate
+node --env-file=.env scripts/allow-user.js user@example.com enable
+npm run dev
 ```
 
-По результату зафиксировать реальное прежнее расположение ClimbPass, источник старого статического кода, установленный runtime/порт, действующий SSH-механизм и будущие точные пути. Не создавать пользователей/каталоги или устанавливать Node только по этому шаблону. Старый сайт/историю не перемещать и не очищать до отдельного адресного перехода.
+Для отзыва доступа использовать `disable`. Если OAuth-приложение Google находится в режиме тестирования, аккаунту также нужен доступ в списке Google Test users. Allowlist приложения проверяется отдельно при входе и API-запросах.
 
-## Последующие этапы после проверки фактов
+Production-администрирование с env выполняется через systemd с `User=climbpass`, `Group=climbpass`, `EnvironmentFile=/etc/climbpass/climbpass.env` и рабочим каталогом активного релиза. Не запускать Node от root и не передавать закрытый env build/deploy-пользователям.
 
-1. Завершить root-owned publisher под подтверждённый runtime, с раздельными правами сборки/runtime, обоими locks и success ledger только после локальной + публичной readiness. Удержание активного и двух успешных rollback-релизов обязательно; кандидатов с живыми refs/cwd/exe/fd/maps/units не удалять. Миграции additive: rollback кода не откатывает БД.
-2. Подготовить отдельную MySQL-схему/права, проектный env, точный systemd unit и NGINX конфиг. Использовать имеющийся wildcard. Сначала nginx -t/локальная готовность/Host/SNI, затем переключение публичного traffic. Не менять TLS renewal/firewall соседних приложений.
-3. Проверить адресный backup и его обратное чтение/manifest/hash/состав tar, восстановление в изолированный контекст без production-таймеров. Только затем включить проектный config/drop-in в существующее расписание.
-4. Проверить ручную публикацию, ошибку до переключения, реальный rollback и возврат. Только после этого добавить CLIMBPASS_DEPLOY_KEY (CI→VPS), отдельный read-only key VPS→GitHub и закреплённый host key в CLIMBPASS_SSH_KNOWN_HOSTS. Runtime env в Actions не переносить. Проверенный текущий host key из документации повторно сверить на VPS.
-5. Workflow передаёт `deploy <full SHA>` через ограниченного пользователя; произвольный shell не разрешается. `CLIMBPASS_SERVER_DEPLOY_ENABLED` пока остаётся выключенной. Проверить совпадение публичной content-version с выбранным релизом — HTTP 200 и зелёный Actions не заменяют этого.
+## Публикация
 
-## Google и однократный перенос истории
+Workflow [.github/workflows/deploy.yml](../../.github/workflows/deploy.yml) запускается для `master` и pull request. Задание `check` выполняет проверки кода, Python-тесты инструментов публикации, модульные тесты, миграции в тестовой MySQL, интеграционные и браузерные сценарии. Публикация выполняется после успешных проверок только при push в `master`.
 
-Google client создан пользователем. Callback: `https://climb-pass.app.shipachev.com/auth/callback`, APP_ORIGIN без последнего `/`. Client ID/secret записываются в закрытый серверный env; allowlist настраивается серверным инструментом проекта.
+В GitHub настроены:
 
-История `history.json` содержит 7 абонементов / 29 посещений и не включается в dist/Git. Перед обновлением сохранить исходный файл и проверенный штатный SQL-backup. После первого входа целевого Google-аккаунта, до создания новых посещений, выполнить `scripts/import-production-history.js` с путём и email: сначала preview, затем отдельный --apply в непривилегированном задании с проектным env. Скрипт сохраняет исходные ID/порядок/дубли, не заменяет программы и отказывается от автоматической замены непустой истории. Стабильный operationId/source hash не даёт повтору создать дубли; данные попадут другим устройствам через sync.
+| Тип | Имя | Назначение |
+| --- | --- | --- |
+| Repository secret | `CLIMBPASS_DEPLOY_KEY` | Отдельный приватный ключ Actions → VPS |
+| Repository variable | `CLIMBPASS_SSH_KNOWN_HOSTS` | Проверенный Ed25519 host key VPS |
+| Repository variable | `CLIMBPASS_SERVER_DEPLOY_ENABLED` | `true` включает публикацию |
+| Environment | `production` | Окружение задания deploy |
 
-Пользовательского JSON-интерфейса больше нет. В production история ещё не загружена. Не включать этот перенос автоматически в каждый start/deploy.
+Входящий ключ разрешает только `deploy <полный SHA>` через forced command. Sudo допускает только фиксированный root-owned trigger. Trigger запускает ограниченное по времени systemd-задание; publisher требует актуальный tip ветки. Отдельный read-only ключ build-пользователя используется в направлении VPS → GitHub. Проверка host keys обязательна в обоих направлениях.
 
-## Подтверждение первого аудита — 03.11.2026
+Root-owned инструменты находятся в `/usr/local/sbin/`: `climbpass-deploy`, `climbpass-deploy-trigger`, `climbpass-deploy-ssh`, `climbpass-backup-snapshot`. Их исходники — в [server/vps](../../server/vps/); административное обновление из проверенного коммита выполняется отдельно, а не application hook. Sudoers — `/etc/sudoers.d/climbpass-deploy`, входящий публичный ключ — `/srv/climbpass/deploy-home/.ssh/authorized_keys`.
 
-Источник: предоставленный пользователем вывод root-сессии britt, attachment b363314b-9497-4ee9-8a20-1ba5f5929c33. Общая документация VPS не изменялась.
+Publisher проверяет репозиторий и полный SHA, делает штатный SQL-backup, собирает неизменяемый релиз, выполняет миграции, атомарно переключает `current` и перезапускает только ClimbPass. Успех записывается после проверки точной content-version локально и через публичный HTTPS. При ошибке готовности после переключения возвращается прежний код. Повтор уже активного успешного SHA проверяет готовность без сборки, backup и перезапуска.
 
-- /srv действительно смонтирован с /dev/sdb1 (ext4). Свободно 2,1 ГБ, занято 96%; до сборок/трёх релизов/backup требуется оценить текущий состав и пиковое потребление. Это не разрешение удалять файлы.
-- /usr/bin/node v22.22.1 и /usr/bin/npm 9.2.0 установлены; выбран штатный host Node + systemd без нового Docker-контейнера и без обновления глобального runtime.
-- MySQL client 8.4.11 подтверждён. nginx, mysql и оба backup timer показаны active. Сетевые и dump/grants-проверки проекта ещё впереди.
-- В снимке listeners нет 9083. Его можно использовать как кандидатный loopback upstream после повторной проверки непосредственно перед запуском.
-- Старый сайт: /srv/www/app.shipachev.com/climb-pass/public, владелец public climb-deploy:climb-deploy. Родитель принадлежит root. Найден /usr/local/bin/climb-pass-deploy, root:root 0755, 506 байт; содержимое пока не получено. Не подменять его до изучения текущего механизма.
-- Вывод getent для новых climbpass/climbpass-build/climbpass-deploy пуст, новые проектные каталоги в проверенных путях не показаны: существование/отсутствие перепроверяется перед созданием, без предположений об именах старого deploy-user.
-- site-backup-files.service использует штатный site-backup и существующий 50-bellboy-snapshot.conf; его ExecStartPre завершался успешно. Добавление ClimbPass пока не выполнялось.
+## Проверка и откат
 
-Следующий адресный этап — read-only обзор верхнего уровня /srv, размер и состав старого public и чтение старого deploy-script. По результату определить точный переход старой статики, запас диска и ручной release pipeline; не чистить соседние проекты, MySQL/binlog или backup на основании одного df.
+На VPS под root:
 
-## Дополнение по второму аудиту — 03.11.2026
+```sh
+systemctl status climbpass --no-pager
+journalctl -u climbpass -n 100 --no-pager
+curl --fail --silent --show-error http://127.0.0.1:9083/health
+curl --fail --silent --show-error https://climb-pass.app.shipachev.com/health
+```
 
-Пользователь подтвердил: старый public — обычный каталог 728 КБ с пятью файлами; скрипт /usr/local/bin/climb-pass-deploy берёт flock /home/climb-deploy/deploy.lock, git pull --ff-only из /home/climb-deploy/repo и install пяти статических файлов. Старый deploy-user — climb-deploy, home /home/climb-deploy, shell /bin/bash. Это отдельная существующая схема; её не подменяем новым Node-деплоем до готовности нового upstream и согласованного переключения NGINX.
+Ответ `/health` должен содержать `ok: true` и версию выбранного релиза из `dist/release.json`. Версия содержит Git SHA и хеш ресурсов; один HTTP 200 не подтверждает нужный код.
 
-По предоставленному du основное место занимают /srv/mysql и /srv/www; это не разрешение чистить их. Локальный размер node_modules ClimbPass ~34 МБ, dist ~1 МБ, поэтому предварительная оценка не требует освобождения гигабайтов ради этого приложения. На VPS перед сборкой повторить df и измерить реальный пик; браузерные Chromium binaries на VPS не устанавливаются, E2E остаётся в CI. Независимое обслуживание общего диска не смешивать с выпуском ClimbPass.
+Для ручного отката выбрать полный SHA из реестра успешных релизов и выполнить под root:
 
-Publisher подготовлен по схеме Bellboy: безопасный Git archive, npm ci/check/test от отдельного build-user в очищенном окружении, root-owned code, Node-миграция отдельным systemd transient unit с User=climbpass и закрытым EnvironmentFile. По умолчанию готовность включает точную content-version по loopback и публичному HTTPS; только после неё success ledger и хранение current + двух успешных rollback. Housekeeping не выдаётся за rollback уже работающего релиза. Неудачные/неизвестные каталоги помечаются для административного разбора и не удаляются автоматически; их список нужно проверять после неудачной сборки.
+```sh
+/usr/local/sbin/climbpass-deploy --rollback <полный-SHA>
+```
 
-Для первой ручной подготовки предусмотрен --local-only (недоступен CI): разрешён без предварительного site-backup только при доказанно пустой схеме climbpass, ещё до регистрации нового проекта в общем files-задании. Он запускает локальный upstream, но пишет только local-ready marker, не успешную production-публикацию. Старая статика продолжает обслуживаться прежним NGINX. После настройки backup/snapshot, проверки восстановления и переключения точного NGINX-конфига тот же SHA проходит обычную публичную readiness и фиксируется как успешный. Повторная попытка поверх неизвестного каталога требует разбора; существующие данные автоматическим bootstrap не заменяются.
+Возврат к сохранённому новому релизу выполняется такой же командой с его SHA. Кодовый откат не откатывает БД: миграции должны сохранять совместимость с удерживаемыми версиями. Publisher удерживает последние три различных успешных релиза, когда они накоплены; неизвестные/неуспешные каталоги не удаляет автоматически. Перед удалением успешного старого релиза проверяет живые ссылки и процессы.
 
-server/vps/prepare-users.sh — отдельный root-скрипт только создания новых пользователей/каталогов, после read-only аудита. Отказывается перезаписывать уже существующие имена/пути. Он не запускает службы и не меняет старый сайт, БД, SSH-ключи или NGINX. Административные права runtime/build не выдаются; ограниченные полномочия deploy-user подключаются отдельно позже. Документация VPS остаётся неизменённой.
+## Резервирование и восстановление
 
-## Подготовка пользователей подтверждена — 03.11.2026
+Используется штатный `site-backup`, его расписание, доступ к хранилищу и retention. Project config: `/etc/site-backup/sites/climb-pass.app.shipachev.com.json`. SQL и файлы — отдельные наборы, а не единая атомарная точка времени.
 
-По выводу пользователя prepare-users.sh успешно создал runtime climbpass (nologin), build/deploy отдельными пользователями, /srv/climbpass, /srv/repos/climbpass и закрытый /etc/climbpass. Имя /srv/repos/climbpass доступно build-user, остальные родители root:root 0755. Runtime/деплой ещё не запускались. Исходные UID/GID динамически назначены ОС; скрипты не закрепляют их численно.
+На VPS под root для адресной копии:
 
-Следующий адресный инструмент — server/vps/prepare-database.py, передаваемый администратором на VPS. Он требует root и mounted /srv, проверяет отсутствие существующих схемы/DB-user/env, интерактивно принимает Client ID и скрытый Client secret, генерирует пароль БД и сохраняет закрытый /etc/climbpass/climbpass.env без печати секретов. Создаёт только climbpass и отдельного climbpass@localhost с необходимыми DML/DDL-правами на climbpass.*. Точная TCP-учётная запись и выбранная схема проверяются отдельно без передачи пароля в argv. Существующие данные, глобальные MySQL-параметры и соседние проекты не меняются.
+```sh
+/usr/local/sbin/site-backup databases --site climb-pass.app.shipachev.com
+/usr/local/sbin/climbpass-backup-snapshot
+/usr/local/sbin/site-backup files --site climb-pass.app.shipachev.com
+```
 
-При частичном сбое env с сгенерированными реквизитами сохраняется, повторное применение/перезапись запрещены до разбора; автоматического DROP/rotation нет. Серверные миграции/allowlist/импорт выполняются позже непривилегированными заданиями. Приватные Client secret и DATABASE_URL не присылать в чат. После успешного создания БД следующий этап — read-only Git key для climbpass-build и подготовка проверенного опубликованного SHA.
+Файловый snapshot содержит активный релиз с зависимостями. Project backup включает настройки приложения, NGINX, systemd, инструменты публикации, SSH-доступ, sudoers, реестр успешных релизов и защищённый исходник перенесённой истории. Фактический состав задаёт серверный project config; шаблон в репозитории не заменяет установленный файл.
 
-## Подготовка БД подтверждена — 03.11.2026
+Drop-in `50-climbpass-snapshot.conf` добавляет подготовку снимка перед общим файловым заданием. Ручной `site-backup files` не запускает helper сам, поэтому сначала нужен snapshot. Он берёт project lock, затем общий backup lock. Не вызывать helper или `site-backup` под уже удерживаемыми теми же locks.
 
-По итоговым сообщениям пользователя prepare-database.py создал схему climbpass и отдельную учётную запись только с правами на climbpass.*, проверил TCP-подключение и сохранил /etc/climbpass/climbpass.env root:root 0600. Секреты в чат не передавались. Миграции, импорт истории, NGINX и запуск служб ещё не выполнялись.
+[verify-backup.py](../../server/vps/verify-backup.py) проверяет выбранные SQL/files наборы, manifest, размеры и SHA-256, восстанавливает код и данные в изолированный контекст. Требуются `--database-set`, `--files-set`, `--commit`; при наличии перенесённой истории также `--owner-email`. Проверка не запускает приложение, OAuth или фоновые службы и не изменяет production-БД. Временные DB/user удаляются после успеха; скачанные артефакты могут содержать секреты и остаются закрытыми. Восстановление всего VPS/ОС/TLS этим инструментом не проверяется.
 
-Следующий этап — отдельный Ed25519 read-only deploy key VPS→GitHub от climbpass-build. Закрытый ключ остаётся в /srv/climbpass/build-home/.ssh/id_ed25519 с правами 0600, в GitHub добавляется только .pub в Shipachev/climbing-pass → Settings → Deploy keys, без Allow write access. Этот ключ не используется для Actions→VPS. Существующий ключ не перезаписывать. После добавления ключа закрепить проверенный GitHub host key, проверить доступ и клонировать master от build-user в подготовленный checkout; не использовать StrictHostKeyChecking=no.
+## Перенос прежней истории
 
-Перед первой публикацией требуется отдельный commit локальных изменений и push: текущая локальная рабочая версия ещё не зафиксирована в Git. Получение старого master на VPS само по себе не является получением рефакторинга. Изменение ключей, checkout и публикация не считаются выполненными до подтверждения.
+Однократный перенос завершён и принят. Пользовательских операций с JSON нет. Импорт не включён в запуск приложения или каждый deploy.
 
-## Доступ VPS→GitHub: ключ добавлен пользователем — 03.11.2026
+[scripts/import-production-history.js](../../scripts/import-production-history.js) остаётся административным инструментом: сначала preview, затем отдельный `--apply` после свежего SQL-backup и проверки владельца. Он сохраняет ID, даты, порядок, дубли посещений и существующие программы; отказывается автоматически заменять непустую историю. Исходный файл не публикуется в Git или `dist`. Повторный перенос не требуется для обычного обновления.
 
-Пользователь подтвердил добавление отдельного deploy key в репозиторий. Следующий шаг — server/vps/prepare-git.sh: закрепить опубликованный GitHub Ed25519 host key (официальный источник: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints), включить StrictHostKeyChecking/IdentitiesOnly/BatchMode и выполнить git ls-remote от climbpass-build с очищенным окружением. Это проверка доступа, не публикация. Приватный ключ остаётся на сервере. Кастомный существующий SSH config скрипт не заменяет. Успех проверки и remote SHA ещё не подтверждены выводом.
+## Обслуживание после перехода
 
-## Чтение репозитория подтверждено — 03.11.2026
-
-По выводу пользователя prepare-git.sh прошёл: climbpass-build читает refs/heads/master, remote SHA 98a3ed98f21db79b536098a8c4c2e71cab789aa3. Клонирование/сборка/публикация не выполнялись. Этот SHA относится к прежнему master; локально уже есть более новый документационный commit и пока не опубликованный код рефакторинга. Следующий шаг — зафиксировать и отправить проверенный код, затем клонировать master от build-user и сверить полный SHA. До ручной публикации и отката production job остаётся выключенной.
-
-## Локальный backend на VPS подтверждён — 03.11.2026
-
-По выводу пользователя опубликован в локальный контекст commit dc7b712a67dc692e397196a3932aad5c574a9171. systemd transient migration применил 001_initial.sql и завершился успешно; bootstrap также завершился успешно. Loopback /health вернул ok=true, version=3.0.0-dc7b712-a4f53fbc2415. Пиковая память bootstrap 216 МБ, миграции ~28 МБ. Это подтверждает build/test/migrate/local readiness, но не Google-вход, публичную публикацию или откат. Success ledger намеренно ещё не отмечает production-успех.
-
-В этом же выводе /srv показывает 23 ГБ свободно (52% занято). Изменение состояния диска выполнено вне этой работы; причины и очистка агентом не утверждаются.
-
-Следующий этап — первоначальное штатное резервирование проекта до переключения NGINX. Переходный files-config берёт шаблон и пока не включает отсутствующие /etc/nginx/sites-enabled/climbpass.conf и /etc/sudoers.d/climbpass-deploy. Новый NGINX config можно сохранить в sites-available без включения. Пока публично обслуживается старый static public, этот действующий каталог и его старый deploy-script временно включаются в переходную копию; это не накопление истории releases. После переключения состав актуализируется по фактически установленным путям; старый завершённый backup не удаляется вне retention.
-
-Snapshot helper должен сначала успешно выполниться вручную, и только затем добавляется проектный ExecStartPre к существующей файловой backup-службе. Адресные database/files копии создаёт site-backup --site climb-pass.app.shipachev.com; глобальные таймеры не перезапускаются. Результаты S3 manifest/hash/tar и изолированного восстановления ещё должны быть получены, до того backup/restore не объявляются подтверждёнными.
-
-## Исправление первого блока настройки backup
-
-Первый переданный пользователю блок остановился при проверке собственного /etc/site-backup/sites/climb-pass.app.shipachev.com.json до его создания. Это ошибка порядка проверки, не ошибка site-backup. По порядку команд к моменту остановки уже выполнены snapshot helper, установка NGINX config в sites-available без включения и установка проектного files-service drop-in на диск. Конфигурация site-backup ещё не установлена, daemon-reload и адресные database/files backup из этого блока не запускались. Снимок создан, но S3-копия ещё не подтверждена.
-
-При продолжении проверять существование всех files-путей, кроме точного пути создаваемого config. Сам config сохранить root:root 0600 атомарным rename временного файла в том же каталоге, после чего проверить все пути повторно, выполнить daemon-reload и адресное резервирование. Не перезапускать исходный блок с проверками отсутствия уже установленных NGINX/drop-in файлов.
-
-## Первые S3-копии подтверждены пользователем — 03.11.2026
-
-Штатный site-backup завершил оба адресных задания с обратным чтением size/SHA-256 и публикацией manifest: database set 20261103T035529349803Z (climbpass.sql.gz, 1613 байт), files set 20261103T035530685538Z (files-and-settings.tar.gz, 11196912 байт). Это подтверждает создание и транспортную проверку, не изолированное восстановление. Перенос history.json ещё не выполнялся.
-
-Следующий адресный инструмент — server/vps/verify-backup.py. Он использует установленный S3 client/read_config site-backup, не меняя общие инструменты/ключи/retention; скачивает только два выбранных набора и проверяет manifest, размеры и SHA-256. Секреты/env/SSH-key остаются внутри закрытого архива в root-only artifacts-каталоге. Для тестов извлекается только ожидаемый active code; symlink/current, отсутствие release history, необходимые настройки/ключ/lock-file проверяются по именам без печати содержимого.
-
-Тесты восстановленного кода запускаются от climbpass-build без production-env и без запуска приложения/фоновых задач. SQL загружается отдельным временным DB-user с правами только на новую уникальную проверочную схему. Производственно-квалифицированные SQL/USE/CREATE DATABASE/DEFINER отклоняются. Сверяются migration checksums и набор таблиц. Только собственные временные DB/user удаляются после успеха; при сбое контекст сохраняется для разбора. Артефакты и изолированный код сохраняются вне состава регулярной копии до подтверждения результата. Проверка не заменяет восстановление всего VPS/OS/TLS и не запускает Google-вход.
-
-Локальные проверки restore-helper покрывают изоляцию извлечения секретов и запрет выбора рабочей схемы. Реальный результат восстановления на VPS ещё не получен.
-
-## Изолированное восстановление подтверждено — 03.11.2026
-
-Пользователь получил Backup restore verified для 3.0.0-dc7b712-a4f53fbc2415. Схема/контрольные суммы миграций и тесты восстановленного кода прошли; allowed_users/users/identities/sessions/attempts/operations/changes/imports в выбранной копии содержат по 0 строк. Это соответствует стадии до allowlist/Google-входа/импорта. Скрипт сообщил удаление только своей временной БД/DB-user и отсутствие изменений production.
-
-Защищённые скачанные артефакты: /srv/climbpass/restore-artifacts-94c29dd5aa16; изолированный код: /srv/climbpass/restore-code-94c29dd5aa16. Их удаление/включение в backup не поручалось; в регулярный project snapshot они не попадают. Полное восстановление ОС/TLS не выполнялось.
-
-Пользователь указал целевой Google-email для allowlist и принадлежности истории (в команды подставляется его адрес, в общую документацию контакт не копируется). Следующий этап — выполнить allow-user отдельным transient unit User/Group=climbpass с закрытым EnvironmentFile, затем активировать точный NGINX server_name.
-
-server/vps/activate-nginx.py берёт project-lock → common backup lock, проверяет loopback content-version, добавляет IPv6 listeners к существующему проектному конфигу, создаёт только новый enabled-link, выполняет nginx -t/reload, проверяет локальный Host/SNI с валидным TLS и публичную HTTPS content-version. После успеха enabled-link входит в backup-config. Ошибка возвращает прежнюю маршрутизацию и project backup-config. Wildcard/другие vhosts/таймеры не заменяются. Это не завершает success ledger: впереди реальный Google-вход, перенос истории, финальная адресная копия и подтверждение публикации.
-
-## Первый перевод NGINX: откат после не-JSON ответа
-
-Пользователь сообщил JSONDecodeError при разборе результата локальной SNI/TLS-проверки и подтверждающую строку скрипта «previous routing restored». Это устанавливает не-JSON ответ и выполненный код отката; конкретный HTTP status/Content-Type исходным скриптом не выводились, причина ещё не доказана.
-
-В activate-nginx.py исправлено отсутствие ожидания после reload: NGINX применяет HUP и заменяет workers асинхронно, поэтому первый запрос мог попасть в старую маршрутизацию. Проверка повторяется до ограниченного срока, принимает только HTTP 200 application/json и точную content-version. При неуспехе сообщает status/type/размер без вывода содержимого страниц. Curl local probe использует --noproxy '*', urllib probes — ProxyHandler({}); TLS проверяется штатно, отключений сертификатов нет. Это устраняет возможную гонку/влияние proxy env, но не объявляется доказанной причиной прежнего ответа.
-
-Локальные тесты покрывают переход old HTML→new JSON и отказ при устойчивом HTTP 301; всего deployment-проверок 12. Следующий адресный шаг — заменить только /root/climbpass-activate-nginx.py и повторить его с прежней ожидаемой версией. Прежнюю схему установки сервиса, миграций, backup и allow-user повторять не требуется. Новый результат переключения ещё не получен.
-
-## Публичная маршрутизация подтверждена — 03.11.2026
-
-По выводу пользователя обновлённый activate-nginx.py успешно проверил публичную HTTPS-маршрутизацию и локальный Host/SNI на точной версии 3.0.0-dc7b712-a4f53fbc2415. IPv4/IPv6 listeners настроены, действующий wildcard сохранён, enabled ClimbPass config включён в project backup coverage. Success ledger пока намеренно не финализирован.
-
-Поскольку первый общий блок остановился на прежней ошибке активации, выполнение следовавшего за ним systemctl enable climbpass не подтверждено. Следующий шаг — включить только новую службу и проверить is-enabled, затем реальный вход пользователя через Google на публичном origin. До серверного импорта абонементы/посещения в новом аккаунте не создавать; исходный history.json остаётся отдельным защищённым источником. Google-вход, принадлежность аккаунта и импорт пока не подтверждены. Старые вкладки/установленную PWA перед проверкой закрыть для активации обновлённого SW, данные браузера не очищать.
-
-## Google-вход подтверждён — 03.11.2026
-
-Пользователь сообщил об успешном входе после переключения публичного HTTPS. Следующий этап — подготовить серверный history.json и выполнить preview для выбранного им аккаунта, без автоматического присоединения браузерных данных.
-
-Исходный локальный файл повторно проверен: 1624 байта, SHA-256 f547f7b0506798193f296318ca26a78a188156bfc3f6f7d22d5a9c028a6facd5. Ожидаемые количества остаются 7 абонементов / 29 посещений. Защищённая транспортная копия — /root/climbpass-history.json; рабочая копия для непривилегированного импорта — /srv/climbpass/import/history.json, каталог root:climbpass 0750, файл root:climbpass 0640. Runtime получает чтение, не запись; web-root/репозиторий не используются.
-
-Preview запускается отдельным transient unit с User/Group=climbpass и закрытым EnvironmentFile. До --apply нужно получить совпадающий checksum/preview и создать свежую адресную SQL-копию уже существующего Google-аккаунта. Непустые passes/visits автоматически не заменяются. Итог реального импорта пока не подтверждён.
-
-## Предварительный отчёт импорта подтверждён — 03.11.2026
-
-Пользователь получил Preview: 7 passes, 29 visits, Preview only; transient preview unit завершился успешно. Следующий шаг — явное применение через server/vps/apply-history.sh и verify-history-state.py, передаваемые администратором в /root (служебные команды, не пользовательский UI).
-
-Применение повторно сверяет точный SHA-256 рабочего history.json, добавляет защищённый /srv/climbpass/import в project backup coverage атомарно под штатными locks, делает свежий штатный SQL-backup, затем выполняет --apply от runtime-пользователя через EnvironmentFile. До/после сохраняются root-only графы в отдельном history-import-check-каталоге; verifier сверяет каждый исходный ID/дату/лимит/status, порядок и дубли посещений, а также неизменность существующих programs/versions/drafts. При несовпадении процесс останавливается без автоматической замены/отката чужих данных.
-
-После успешной сверки обновляется active-file snapshot и создаются адресные post-import database/files копии через общий site-backup. Контекст проверки не входит в регулярный архив; исходный history.json входит. Скрипт не финализирует success ledger и не включает CI-доступ. Полный результат импорта и post-import backup ещё не получен.
-
-Локальный тест verifier проверяет сохранение дублей одной даты и отказ при изменении порядка/лимита/существующей версии. Всего deployment-проверок 13; синтаксис apply-history.sh проверен.
-
-## Импорт в production подтверждён — 03.11.2026
-
-По выводу пользователя применён импорт на cursor=1, затем полностью сверены 7 passes / 29 visits, ID, даты, порядок, дубли и сохранность существующих программ. Import unit завершился успешно. После этого выполнены штатные snapshot/database/files backup с проверкой обратным чтением: database set 20261103T045534262112Z (6904 байта), files set 20261103T045535577922Z (11197571 байт). Это подтверждает production-перенос и post-import копии; пользовательская история не попала в Git/публичный dist.
-
-Следующий контроль — восстановить именно post-import наборы: прежняя restore-проверка касалась пустой схемы. verify-backup.py дополнен --owner-email; если архив включает srv/climbpass/import/history.json, этот аргумент обязателен. В изолированной восстановленной БД сравниваются все legacy-поля с восстановленным исходным файлом и source_hash/import receipt именно указанного владельца. Существующие программы при этом не сравниваются с отсутствующим pre-import графом повторно — их неизменность уже доказана настоящей before/after проверкой импорта. Для JSON графа используется raw UTF-8 вывод MySQL без двойного экранирования. Временная БД/учётная запись удаляются только после успеха, действующие данные не меняются.
-
-Проверку отображения 7 абонементов и 29 посещений без тренировки на втором устройстве/публичной странице ещё нужно подтвердить. Production success ledger и ограниченный CI-доступ пока не финализированы.
-
-## Восстановление post-import копии подтверждено — 03.11.2026
-
-По выводу пользователя восстановлены allowed_users/users/oauth_identities/sessions/operations/changes/imports по 1 строке, oauth_attempts=0. Восстановленные исходный history.json и source receipt совпали с указанным владельцем, все 7 абонементов/29 посещений сверены. Версия восстановленного кода 3.0.0-dc7b712-a4f53fbc2415. Только собственная временная БД и DB-user удалены, production не менялась, приложение/Google/фоновые службы из копии не запускались.
-
-Новые защищённые артефакты: /srv/climbpass/restore-artifacts-452945622c87; изолированный код: /srv/climbpass/restore-code-452945622c87. Сохранены для аудита, не включены дополнительными деревьями в регулярный backup. Это проверка данных/кода/импорта, а не восстановление всего VPS/OS/TLS.
-
-Следующий шаг — первый обычный ручной publisher (без --local-only) для текущего dc7b712a67dc692e397196a3932aad5c574a9171. Он должен взять свежую штатную копию БД, проверить локальную/публичную content-version и лишь затем записать ready в successful-releases.json. Новых миграций для уже подготовленного релиза не требуется. После подтверждения записи успеха остаются реальный rollback/возврат и ограниченный CI-доступ; наличие одного начального успешного релиза не выдумывает два более старых Node-релиза.
-
-Проверка GitHub Actions через неавторизованный web API результата не дала; статус удалённого CI не объявляется подтверждённым.
-
-## Первая успешная production-публикация подтверждена — 03.11.2026
-
-Пользователь предоставил успешный вывод обычного publisher: свежая адресная SQL-копия создана и проверена (set 20261103T054140418059Z), ClimbPass release version 3.0.0-dc7b712-a4f53fbc2415, Published ClimbPass Git commit dc7b712a67dc692e397196a3932aad5c574a9171, transient unit завершился успешно. Публичный /health повторно вернул ту же версию. Success ledger зафиксирован после readiness, а не по одному наличию каталога. Выполнение systemctl enable в переданном блоке дошло до последующей curl-проверки без ошибки.
-
-Следующий этап — опубликовать эксплуатационные инструменты и уточнённую документацию вторым коммитом, вручную проверить публикацию/rollback/возврат, затем ограниченный CI-доступ. Publisher дополнен idempotent retry: уже активный успешный SHA проходит readiness и возвращает Already active and ready без повторной сборки/перезапуска/backup и изменения success ledger. Это соответствует принятой схеме Bellboy. Тест подтверждает отсутствие побочных команд при таком повторе. Перед использованием этой версии root-owned entrypoint обновляется администратором отдельно из проверенного Git commit, не application hook.
+Старый статический сайт и временные restore/import artifacts не нужны работающему backend. Их удаление, а также исключение переходных файлов из последующих backup выполняются отдельно после проверки точных путей и действующего состава копий. Завершение приёмки не означает, что эти серверные файлы уже удалены.

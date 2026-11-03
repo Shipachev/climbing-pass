@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { indexedDB } from 'fake-indexeddb';
 import { parseSource, counts, preview } from '../js/data/migration.js';
@@ -49,10 +49,6 @@ try {
     sourceUnchanged: true,
   };
   console.log(JSON.stringify(result, null, 2));
-  await writeFile(
-    'docs/refactoring/history-validation.md',
-    `# Проверка текущей копии history.json\n\nДата: 02.11.2026. Источник не изменён, в Git и оболочку PWA не включён.\n\nSHA-256: ${sha256}\n\nФормат: старый массив абонементов. Проверены 7 абонементов и 29 посещений, включая порядок, исходные ID через полную таблицу соответствия, даты, лимиты и принадлежность. После нормализации созданы 2 исходные программы и 2 первые версии. В исходном файле нет занятий, отметок, заметок и черновиков: они не восстанавливаются из отсутствующих данных.\n\nПодтверждены графовый round-trip, атомарная запись IndexedDB, повторное открытие базы, серверный импорт и повтор того же operationId без дублей, pull и подтверждение локальной очереди. Все нормализованные поля совпали; расхождений дат со сроками нет. Проверка выполнена на отдельной локальной MariaDB 12.0.2, тестовый аккаунт удалён после проверки. Production-импорт не выполнялся.\n`,
-  );
 } finally {
   repository?.close();
   await cleanup(user);
