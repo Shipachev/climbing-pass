@@ -1,0 +1,7 @@
+{
+  "repository": "git@github.com:Shipachev/climbing-pass.git",
+  "checkout": "/srv/repos/climbpass",
+  "branch": "master",
+  "build_user": "climbpass-build",
+  "port": 9083
+}

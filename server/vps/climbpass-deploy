@@ -1,0 +1,273 @@
+#!/usr/bin/python3
+"""ClimbPass publisher, following the documented Bellboy deployment boundaries.
+Install root-owned outside the checkout. Never update this tool from a deploy hook.
+"""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import pwd
+import re
+import shutil
+import subprocess
+import tarfile
+import tempfile
+import time
+import urllib.request
+
+ROOT = Path('/srv/climbpass')
+CONFIG = Path('/etc/climbpass/deploy.json')
+COMMON_LOCK = Path('/srv/backups/site-backup/.lock')
+SITE = 'climb-pass.app.shipachev.com'
+
+
+def run(*args, **kwargs):
+    return subprocess.run(args, check=True, **kwargs)
+
+
+def extract_code(archive, release):
+    for member in archive.getmembers():
+        relative = Path(member.name)
+        if relative.is_absolute() or '..' in relative.parts or not (member.isfile() or member.isdir()):
+            raise ValueError('Only regular files and directories allowed in Git archive')
+        destination = release / relative
+        if member.isdir():
+            destination.mkdir(parents=True, exist_ok=True, mode=0o755)
+        else:
+            destination.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+            with archive.extractfile(member) as source, destination.open('wb') as target:
+                shutil.copyfileobj(source, target)
+            destination.chmod(0o644)
+        parent = destination if member.isdir() else destination.parent
+        while parent != release:
+            parent.chmod(0o755)
+            parent = parent.parent
+
+
+def ownership(release, user):
+    identity = pwd.getpwnam(user)
+    for parent, directories, files in os.walk(release, followlinks=False):
+        for path in [Path(parent), *(Path(parent) / name for name in directories + files)]:
+            if path.is_symlink() and not path.resolve().is_relative_to(release):
+                raise ValueError('Release contains an external symlink')
+            os.chown(path, identity.pw_uid, identity.pw_gid, follow_symlinks=False)
+            if user == 'root' and not path.is_symlink():
+                path.chmod(path.stat().st_mode & 0o777 & ~0o022)
+
+
+def ready(release, port, local_only=False):
+    run('/usr/bin/systemctl', 'is-active', '--quiet', 'climbpass')
+    expected = json.loads((release / 'dist/release.json').read_text())['version']
+    urls = [f'http://127.0.0.1:{port}/health']
+    if not local_only:
+        urls.append('https://' + SITE + '/health')
+    for url in urls:
+        with urllib.request.urlopen(url, timeout=10) as response:
+            result = json.load(response)
+        if result.get('ok') is not True or result.get('version') != expected:
+            raise ValueError('Health response does not match exact content version')
+    return expected
+
+
+def write_json(path, value):
+    temporary = path.with_name(path.name + '.new')
+    temporary.write_text(json.dumps(value, indent=2) + '\n')
+    os.replace(temporary, path)
+
+
+def referenced(candidate):
+    """Same conservative process/project/unit reference checks as Bellboy."""
+    for proc in Path('/proc').iterdir():
+        if not proc.name.isdigit():
+            continue
+        try:
+            for reference in [proc / 'cwd', proc / 'exe', *(proc / 'fd').iterdir()]:
+                if reference.resolve().is_relative_to(candidate):
+                    return True
+            if str(candidate) in (proc / 'maps').read_text():
+                return True
+            if str(candidate).encode() in (proc / 'cmdline').read_bytes():
+                return True
+        except FileNotFoundError:
+            continue
+        except (PermissionError, OSError):
+            return True
+    for base in [ROOT, Path('/etc/systemd/system')]:
+        for parent, directories, files in os.walk(base, followlinks=False):
+            if Path(parent).is_relative_to(ROOT / 'releases'):
+                directories[:] = []
+                continue
+            for name in directories + files:
+                path = Path(parent) / name
+                try:
+                    if path.is_symlink() and path.resolve().is_relative_to(candidate):
+                        return True
+                    if base == Path('/etc/systemd/system') and path.is_file() and not path.is_symlink():
+                        if str(candidate).encode() in path.read_bytes():
+                            return True
+                except OSError:
+                    return True
+    return False
+
+
+def housekeeping(state):
+    keep = {entry['path'] for entry in state[-3:]}
+    keep.add(str((ROOT / 'current').resolve()))
+    # Only recorded successful releases are candidates. Unknown/failed trees
+    # are never deleted based merely on age; list those for an explicit audit.
+    for entry in state[:-3]:
+        candidate = Path(entry['path'])
+        if str(candidate) in keep or not candidate.exists():
+            continue
+        if candidate.parent != ROOT / 'releases' or candidate.is_symlink() or referenced(candidate):
+            print('Housekeeping retained referenced/uncertain release:', candidate.name)
+            continue
+        shutil.rmtree(candidate)
+    recorded = {entry['path'] for entry in state}
+    for candidate in (ROOT / 'releases').iterdir():
+        if str(candidate) not in recorded and str(candidate) not in keep:
+            print('Unfinished release retained for administrative audit:', candidate.name)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--require-tip', action='store_true')
+    parser.add_argument('--rollback', action='store_true')
+    parser.add_argument('--local-only', action='store_true', help='Admin bootstrap: no success ledger until public HTTPS passes')
+    parser.add_argument('commit')
+    args = parser.parse_args()
+    if args.require_tip and (args.rollback or args.local_only):
+        parser.error('CI may not request rollback or bootstrap')
+    if not re.fullmatch('[a-f0-9]{40}', args.commit):
+        parser.error('One full Git commit required')
+    if os.geteuid() != 0 or not os.path.ismount('/srv'):
+        parser.error('Requires root and mounted /srv')
+    os.umask(0o077)
+    st = CONFIG.stat()
+    if CONFIG.is_symlink() or st.st_uid != 0 or st.st_mode & 0o077:
+        parser.error('Config must be root-owned, mode 600')
+    config = json.loads(CONFIG.read_text())
+    branch, build_user = config['branch'], config['build_user']
+    if not re.fullmatch('[a-zA-Z0-9._/-]+', branch) or branch.startswith('-'):
+        parser.error('Invalid publication branch')
+    if not re.fullmatch('[a-z_][a-z0-9_-]*', build_user) or build_user in ['root', 'climbpass']:
+        parser.error('Separate unprivileged build user required')
+    port = config['port']
+    if not isinstance(port, int) or not 1024 <= port <= 65535:
+        parser.error('Invalid local port')
+    repo = Path(config['checkout'])
+    def git(*arguments, **kwargs):
+        return run('/usr/sbin/runuser', '-u', build_user, '--', '/usr/bin/git', '-C', str(repo), *arguments, **kwargs)
+    with (ROOT / 'deploy.lock').open('a') as project:
+        fcntl.flock(project, fcntl.LOCK_EX)
+        origin = git('remote', 'get-url', 'origin', stdout=subprocess.PIPE, text=True).stdout.strip()
+        if origin != config['repository']:
+            parser.error('Origin differs from root-owned configuration')
+        git('fetch', '--no-tags', 'origin', '+refs/heads/' + branch + ':refs/remotes/origin/' + branch)
+        git('merge-base', '--is-ancestor', args.commit, 'refs/remotes/origin/' + branch)
+        if git('rev-parse', args.commit + '^{commit}', stdout=subprocess.PIPE, text=True).stdout.strip() != args.commit:
+            parser.error('Commit mismatch')
+        if args.require_tip and git('rev-parse', 'refs/remotes/origin/' + branch, stdout=subprocess.PIPE, text=True).stdout.strip() != args.commit:
+            parser.error('Requested SHA is no longer the branch tip')
+        release = ROOT / 'releases' / args.commit
+        current = ROOT / 'current'
+        if current.exists() and not current.is_symlink():
+            parser.error('Current must be a symlink')
+        previous = current.resolve() if current.exists() else None
+        if previous and previous.parent != ROOT / 'releases':
+            parser.error('Previous current is outside releases')
+        statepath = ROOT / 'successful-releases.json'
+        state = json.loads(statepath.read_text()) if statepath.exists() else []
+        known = next((entry for entry in state if entry.get('commit') == args.commit), None)
+        prepared = release / '.local-ready.json'
+        retry_current = previous == release and prepared.exists()
+        if release.exists() and (release.is_symlink() or not (known and args.rollback or previous == release and known or retry_current)):
+            parser.error('Existing unverified release requires administrative audit; no automatic overwrite')
+        if args.rollback and not known:
+            parser.error('Rollback requires a retained successful release')
+        # Uses the existing site-backup implementation and its own common lock.
+        # Call it before acquiring that same lock here to avoid recursive deadlock.
+        if args.local_only and previous is None:
+            # Initial bootstrap precedes registering this project in the global
+            # files job. It is allowed only for a demonstrably empty schema.
+            count = run('/usr/bin/mysql', '--batch', '--skip-column-names', '-e',
+                        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='climbpass'",
+                        stdout=subprocess.PIPE, text=True).stdout.strip()
+            if count != '0':
+                parser.error('First bootstrap requires empty climbpass schema; back up any existing data first')
+        else:
+            run('/usr/local/sbin/site-backup', 'databases', '--site', SITE)
+        with COMMON_LOCK.open('a') as backup:
+            fcntl.flock(backup, fcntl.LOCK_EX)
+            if not release.exists():
+                release.mkdir(mode=0o755)
+                release.chmod(0o755)
+                with tempfile.TemporaryFile() as stream:
+                    git('archive', '--format=tar', args.commit, stdout=stream)
+                    stream.seek(0)
+                    archive_sha256 = hashlib.file_digest(stream, 'sha256').hexdigest()
+                    stream.seek(0)
+                    with tarfile.open(fileobj=stream, mode='r:') as archive:
+                        extract_code(archive, release)
+                ownership(release, build_user)
+                clean_environment = ['HOME=' + pwd.getpwnam(build_user).pw_dir, 'PATH=/usr/bin:/bin', 'CLIMBPASS_GIT_SHA=' + args.commit]
+                for command in [('/usr/bin/npm', 'ci'), ('/usr/bin/npm', 'run', 'check'), ('/usr/bin/npm', 'test')]:
+                    run('/usr/sbin/runuser', '-u', build_user, '--', '/usr/bin/env', '-i', *clean_environment, *command, cwd=release)
+                ownership(release, 'root')
+                run('/usr/bin/systemd-run', '--unit=climbpass-migrate', '--wait', '--pipe', '--collect',
+                    '--property=User=climbpass', '--property=Group=climbpass',
+                    '--property=EnvironmentFile=/etc/climbpass/climbpass.env',
+                    '--property=WorkingDirectory=' + str(release),
+                    '--property=RequiresMountsFor=/srv/climbpass', '--property=AssertPathIsMountPoint=/srv',
+                    '--property=NoNewPrivileges=true', '--property=UMask=0077',
+                    '/usr/bin/node', 'server/migrate.js')
+            else:
+                archive_sha256 = known['archive_sha256'] if known else json.loads(prepared.read_text())['archive_sha256']
+            switching = ROOT / '.current-new'
+            if switching.is_symlink():
+                switching.unlink()
+            switching.symlink_to(release)
+            os.replace(switching, current)
+            try:
+                run('/usr/bin/systemctl', 'restart', 'climbpass')
+                for attempt in range(20):
+                    try:
+                        version = ready(release, port, args.local_only)
+                        break
+                    except (ValueError, OSError, subprocess.CalledProcessError):
+                        if attempt == 19:
+                            raise
+                        time.sleep(.5)
+            except BaseException:
+                if previous:
+                    switching.symlink_to(previous)
+                    os.replace(switching, current)
+                    run('/usr/bin/systemctl', 'restart', 'climbpass')
+                else:
+                    run('/usr/bin/systemctl', 'stop', 'climbpass')
+                    current.unlink()
+                # Failed code stays for an explicit process/reference audit.
+                raise
+            record = {'commit': args.commit, 'archive_sha256': archive_sha256, 'path': str(release), 'published_at': time.time(), 'result': 'ready', 'version': version}
+            if args.local_only:
+                record['result'] = 'local-ready'
+                write_json(prepared, record)
+                if not statepath.exists():
+                    write_json(statepath, [])
+                print('Local bootstrap ready; public publication not yet recorded:', args.commit)
+                return
+            state = [entry for entry in state if entry.get('commit') != args.commit] + [record]
+            write_json(statepath, state)
+            print('ClimbPass release version:', version, flush=True)
+            print('Published ClimbPass Git commit:', args.commit, flush=True)
+            # Readiness remains successful even if subsequent housekeeping fails.
+            try:
+                housekeeping(state)
+            except OSError as error:
+                print('Housekeeping incomplete; working release retained:', type(error).__name__)
+
+
+if __name__ == '__main__':
+    main()

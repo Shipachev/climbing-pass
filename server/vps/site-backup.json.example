@@ -1,0 +1,22 @@
+{
+  "site": "climb-pass.app.shipachev.com",
+  "databases": ["climbpass"],
+  "files": [
+    "/srv/climbpass/backup-snapshot",
+    "/etc/climbpass",
+    "/etc/systemd/system/climbpass.service",
+    "/etc/systemd/system/site-backup-files.service.d/50-climbpass-snapshot.conf",
+    "/usr/local/sbin/climbpass-deploy",
+    "/usr/local/sbin/climbpass-deploy-ssh",
+    "/usr/local/sbin/climbpass-deploy-trigger",
+    "/usr/local/sbin/climbpass-backup-snapshot",
+    "/etc/nginx/sites-available/climbpass.conf",
+    "/etc/nginx/sites-enabled/climbpass.conf",
+    "/etc/sudoers.d/climbpass-deploy",
+    "/srv/climbpass/build-home/.ssh",
+    "/srv/climbpass/deploy-home/.ssh",
+    "/srv/climbpass/successful-releases.json",
+    "/etc/site-backup/sites/climb-pass.app.shipachev.com.json"
+  ],
+  "exclude": []
+}

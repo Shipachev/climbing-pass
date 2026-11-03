@@ -1,0 +1,20 @@
+<!-- @dsCard group="Components" viewport="700x220" name="Navigation — TabBar, TopBar" -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../components/_card-boot.js"></script>
+<style>body{padding:20px;background:#fff}</style></head><body><div id="root"></div>
+<script type="text/babel">
+bootDS().then(function (NS) {
+
+  const { TabBar, TopBar, Button } = NS;
+  function App(){ const [t,setT]=React.useState('home');
+    return <div style={{display:'flex',flexDirection:'column',gap:20,maxWidth:390}}>
+      <TopBar onBack={()=>{}} action={<Button variant="outline" size="sm" icon="flag">Завершить</Button>} />
+      <TopBar onBack={()=>{}} backIcon="close" backLabel="Закрыть" title="Программа" />
+      <TabBar active={t} onChange={setT} position="static" safeBottom={4} />
+    </div>; }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+});
+</script></body></html>

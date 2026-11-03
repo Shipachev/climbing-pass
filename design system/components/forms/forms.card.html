@@ -1,0 +1,21 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Forms — TextField, TextArea, SegmentedControl" -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../components/_card-boot.js"></script>
+<style>body{padding:20px;background:#fff}</style></head><body><div id="root"></div>
+<script type="text/babel">
+bootDS().then(function (NS) {
+
+  const { TextField, TextArea, SegmentedControl } = NS;
+  function App(){ const [f,setF]=React.useState('Все'); const [n,setN]=React.useState('Все серии выполнены, работа ног стала точнее');
+    return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+      <TextField label="Название" value="Техника и выносливость" emphasis readOnly />
+      <TextField label="План, мин" value="90" readOnly inputMode="numeric" />
+      <TextArea label="Моя заметка" value={n} onChange={e=>setN(e.target.value)} style={{gridColumn:'1 / -1'}} />
+      <SegmentedControl options={['Все','Завершённые','Незавершённые']} value={f} onChange={setF} style={{gridColumn:'1 / -1'}} />
+    </div>; }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+});
+</script></body></html>

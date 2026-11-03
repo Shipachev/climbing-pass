@@ -1,0 +1,24 @@
+#!/usr/bin/python3
+"""Fixed root entrypoint. A transient systemd unit survives SSH disconnection."""
+import os
+import re
+import subprocess
+import sys
+
+def deploy_command(arguments):
+    if len(arguments)!=1 or not re.fullmatch(r'[0-9a-f]{40}',arguments[0]):
+        raise ValueError('One full Git commit is required')
+    return ['/usr/bin/systemd-run','--unit=climbpass-deploy','--wait','--pipe','--collect',
+            '--property=Type=exec','--property=RuntimeMaxSec=2400',
+            '--property=RequiresMountsFor=/srv/climbpass','--property=AssertPathIsMountPoint=/srv',
+            '--property=UMask=0077','--property=WorkingDirectory=/',
+            '/usr/local/sbin/climbpass-deploy','--require-tip',arguments[0]]
+
+def main():
+    if os.geteuid()!=0: return 77
+    try: command=deploy_command(sys.argv[1:])
+    except ValueError as e:
+        print(str(e),file=sys.stderr); return 64
+    return subprocess.run(command).returncode
+
+if __name__=='__main__': sys.exit(main())

@@ -1,0 +1,30 @@
+{
+  "name": "climbpass",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "build": "node scripts/build.js",
+    "check": "node scripts/check.js",
+    "dev": "npm run build && node --env-file-if-exists=.env server/index.js",
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "migrate": "node --env-file-if-exists=.env server/migrate.js",
+    "test:e2e": "playwright test",
+    "test:integration": "node --test tests/integration/*.test.js",
+    "pretest": "npm run build",
+    "format:check": "prettier --check 'js/**/*.js' 'server/*.js' 'scripts/*.js' 'tests/**/*.js' styles.css index.html"
+  },
+  "dependencies": {
+    "jose": "^6.2.15",
+    "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "fake-indexeddb": "^6.2.7",
+    "prettier": "^3.9.10"
+  },
+  "version": "3.0.0",
+  "engines": {
+    "node": ">=22.12"
+  }
+}

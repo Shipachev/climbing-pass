@@ -1,0 +1,55 @@
+CREATE TABLE IF NOT EXISTS allowed_users (
+ email VARCHAR(254) CHARACTER SET ascii COLLATE ascii_general_ci PRIMARY KEY,
+ enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+);
+CREATE TABLE IF NOT EXISTS users (
+ id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+ email VARCHAR(254) NOT NULL UNIQUE,
+ state JSON NOT NULL,
+ revisions JSON NOT NULL,
+ sync_cursor BIGINT UNSIGNED NOT NULL DEFAULT 0,
+ created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+);
+CREATE TABLE IF NOT EXISTS oauth_identities (
+ provider VARCHAR(32) CHARACTER SET ascii NOT NULL,
+ subject VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ user_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ PRIMARY KEY(provider,subject),
+ FOREIGN KEY(user_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS sessions (
+ token_hash CHAR(64) CHARACTER SET ascii PRIMARY KEY,
+ user_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ csrf CHAR(64) CHARACTER SET ascii NOT NULL,
+ expires_at DATETIME(3) NOT NULL,
+ FOREIGN KEY(user_id) REFERENCES users(id), INDEX(expires_at)
+);
+CREATE TABLE IF NOT EXISTS oauth_attempts (
+ state_hash CHAR(64) CHARACTER SET ascii PRIMARY KEY,
+ verifier VARCHAR(128) CHARACTER SET ascii NOT NULL,
+ nonce VARCHAR(128) CHARACTER SET ascii NOT NULL,
+ expires_at DATETIME(3) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS operations (
+ user_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ operation_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ digest CHAR(64) CHARACTER SET ascii NOT NULL,
+ result JSON NOT NULL,
+ PRIMARY KEY(user_id,operation_id), FOREIGN KEY(user_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS changes (
+ user_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ sync_cursor BIGINT UNSIGNED NOT NULL,
+ operation_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ snapshot JSON NOT NULL,
+ PRIMARY KEY(user_id,sync_cursor), FOREIGN KEY(user_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS imports (
+ user_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ import_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ source_hash CHAR(64) CHARACTER SET ascii NOT NULL,
+ result JSON NOT NULL,
+ PRIMARY KEY(user_id,import_id), FOREIGN KEY(user_id) REFERENCES users(id)
+);

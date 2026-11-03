@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "passes": [
+    {
+      "id": "legacy-42",
+      "start": "2020-01-01",
+      "end": "2020-02-01",
+      "total": 3,
+      "status": "archived"
+    }
+  ],
+  "visits": [
+    {
+      "id": "legacy-42-visit-0",
+      "passId": "legacy-42",
+      "date": "2020-01-04",
+      "workout": {
+        "id": "workout-old",
+        "programId": "program-1",
+        "versionId": "program-1-v1",
+        "versionNumber": 1,
+        "content": {
+          "title": "Контрольная программа",
+          "goal": "Сохранить все поля",
+          "notes": "Исходное примечание",
+          "duration": 60,
+          "sections": [
+            {
+              "id": "section-old",
+              "title": "Тренировка",
+              "duration": "40–50 минут",
+              "steps": [
+                {
+                  "id": "step-old",
+                  "title": "Контрольный этап",
+                  "instructions": "Сохрани текст без преобразований",
+                  "duration": "3–5 минут",
+                  "volume": "По самочувствию",
+                  "optional": true,
+                  "type": "training"
+                }
+              ]
+            }
+          ]
+        },
+        "status": "completed",
+        "startedAt": "2020-01-04T10:00:00Z",
+        "completedAt": "2020-01-04T11:00:00Z",
+        "marks": {
+          "step-old": {
+            "status": "skipped",
+            "note": "Историческая заметка"
+          }
+        }
+      }
+    },
+    {
+      "id": "legacy-42-visit-1",
+      "passId": "legacy-42",
+      "date": "2020-01-04"
+    }
+  ],
+  "programs": [
+    {
+      "id": "program-1",
+      "currentVersionId": "program-1-v1",
+      "archived": false
+    }
+  ],
+  "versions": [
+    {
+      "id": "program-1-v1",
+      "programId": "program-1",
+      "number": 1,
+      "savedAt": "2020-01-01T12:00:00Z",
+      "content": {
+        "title": "Контрольная программа",
+        "goal": "Сохранить все поля",
+        "notes": "Исходное примечание",
+        "duration": 60,
+        "sections": [
+          {
+            "id": "section-old",
+            "title": "Тренировка",
+            "duration": "40–50 минут",
+            "steps": [
+              {
+                "id": "step-old",
+                "title": "Контрольный этап",
+                "instructions": "Сохрани текст без преобразований",
+                "duration": "3–5 минут",
+                "volume": "По самочувствию",
+                "optional": true,
+                "type": "training"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "drafts": [
+    {
+      "programId": "program-1",
+      "baseVersionId": "program-1-v1",
+      "updatedAt": "2020-01-05T12:00:00Z",
+      "content": {
+        "title": "",
+        "goal": "Сохранить все поля",
+        "notes": "Исходное примечание",
+        "duration": -1,
+        "sections": [
+          {
+            "id": "section-old",
+            "title": "Тренировка",
+            "duration": "40–50 минут",
+            "steps": [
+              {
+                "id": "step-old",
+                "title": "Контрольный этап",
+                "instructions": "Сохрани текст без преобразований",
+                "duration": "3–5 минут",
+                "volume": "По самочувствию",
+                "optional": true,
+                "type": "training"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

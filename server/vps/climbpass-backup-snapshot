@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+"""Project-specific staging for the existing site-backup files job. No S3 keys."""
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import tempfile
+
+ROOT=Path('/srv/climbpass')
+LOCK=Path('/srv/backups/site-backup/.lock')
+
+def snapshot_locked():
+    active=(ROOT/'current').resolve(strict=True)
+    if active.parent!=ROOT/'releases' or active.is_symlink():
+        raise ValueError('Invalid ClimbPass current target')
+    staging=Path(tempfile.mkdtemp(prefix='.snapshot-',dir=ROOT))
+    try:
+        for parent,dirs,files in os.walk(active,followlinks=False):
+            for name in dirs+files:
+                link=Path(parent)/name
+                if link.is_symlink() and not link.resolve().is_relative_to(active):
+                    raise ValueError('External symlink in active code requires explicit backup coverage')
+        (staging/'releases').mkdir()
+        shutil.copytree(active,staging/'releases'/active.name,symlinks=True)
+        (staging/'current').symlink_to('releases/'+active.name)
+        manifest={'release':active.name,'copied_active_target':str(active),'database':'handled separately by site-backup databases'}
+        (staging/'snapshot.json').write_text(json.dumps(manifest)+'\n')
+        destination=ROOT/'backup-snapshot'
+        previous=ROOT/'.snapshot-previous'
+        if previous.exists(): shutil.rmtree(previous)
+        if destination.exists(): destination.rename(previous)
+        staging.rename(destination)
+        if previous.exists(): shutil.rmtree(previous)
+    finally:
+        if staging.exists(): shutil.rmtree(staging)
+
+def main():
+    os.umask(0o077)
+    if os.geteuid()!=0 or not os.path.ismount('/srv'): raise SystemExit('Requires root and mounted /srv')
+    with (ROOT/'deploy.lock').open('a') as project:
+        fcntl.flock(project,fcntl.LOCK_EX)
+        with LOCK.open('a') as backup:
+            fcntl.flock(backup,fcntl.LOCK_EX)
+            snapshot_locked()
+    print('ClimbPass: active release file snapshot ready; MySQL is backed up by site-backup databases')
+
+if __name__=='__main__': main()

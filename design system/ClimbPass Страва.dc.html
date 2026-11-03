@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0&display=block"><style>body{margin:0;background:#ECEAE5;font-family:Onest,system-ui,sans-serif}a{color:#0F0F0F}a:hover{color:#C2410C}textarea,input{font-family:inherit}.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;font-feature-settings:'liga';display:inline-block;user-select:none;flex:none}</style></helmet>
+<section style="padding:40px 44px 48px">
+<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px"><span style="font:800 22px/1 Onest;letter-spacing:-0.02em">ClimbPass · Страва</span><span style="font:500 13px Onest;color:rgba(0,0,0,.55)">набор экранов, развитие <a href="ClimbPass Directions.dc.html#1b">1b</a></span></div>
+<p style="margin:0 0 32px;font:400 13px/1.5 Onest;color:rgba(0,0,0,.55);max-width:780px">Интерактивно: отметка этапов (кнопки и свайп), заметки, завершение тренировки, фильтр истории, выбор нового абонемента в настройках, отметка посещения.</p>
+<div style="display:flex;flex-wrap:wrap;gap:56px 48px;align-items:flex-start">
+
+<!-- 01 ГЛАВНАЯ -->
+<div data-screen-label="01 Главная" style="display:flex;flex-direction:column;gap:14px;padding:10px">
+<div style="font:700 13px/1 Onest;color:rgba(0,0,0,.6)">01 · Главная</div>
+<div style="width:{{ fw }};height:844px;position:relative;overflow:hidden;border-radius:46px;background:#fff;box-shadow:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;color:#0F0F0F">
+<div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px 34px;box-sizing:border-box"><span style="font:600 16px/1 system-ui">9:41</span><span style="display:flex;gap:3px"><span class="ms" style="font-size:18px">signal_cellular_alt</span><span class="ms" style="font-size:18px">wifi</span><span class="ms" style="font-size:18px">battery_full</span></span></div>
+<div style="flex:1;overflow-y:auto;padding:0 12px 120px">
+<div style="display:flex;align-items:center;min-height:56px;padding:0 6px"><span style="font:800 26px/1 Onest;letter-spacing:-0.03em">ClimbPass</span></div>
+<sc-if value="{{ t.h.active }}" hint-placeholder-val="{{ true }}">
+<div style="margin-top:4px;background:#0F0F0F;color:#fff;border-radius:16px;padding:20px">
+<div style="display:flex;align-items:center;gap:8px;font:800 12px/1 Onest;letter-spacing:.08em;color:#FF7A45;text-transform:uppercase"><span style="width:8px;height:8px;border-radius:4px;background:#FF7A45"></span>Активная тренировка</div>
+<h2 style="margin:12px 0 18px;font:800 28px/1.1 Onest;letter-spacing:-0.02em;text-wrap:pretty">Техника и выносливость</h2>
+<div style="font:600 14px/1 Onest;color:#BDBDBD">Выполнено</div>
+<div style="display:flex;align-items:baseline;gap:10px;margin-top:4px"><span style="font:800 64px/0.95 Onest;letter-spacing:-0.04em;font-variant-numeric:tabular-nums">{{ t.done }}</span><span style="font:700 19px Onest">из 9 этапов</span></div>
+<div style="display:flex;gap:4px;margin:16px 0 18px"><sc-for list="{{ t.segs }}" as="seg" hint-placeholder-count="9"><span style="flex:1;height:10px;border-radius:2px;background:{{ seg.hbg }}"></span></sc-for></div>
+<div style="border-top:1px solid #2C2C2C;padding-top:14px"><div style="font:600 13px/1.3 Onest;color:#A8A8A8">Текущий этап</div><div style="margin-top:3px;font:700 19px/1.25 Onest;text-wrap:pretty">{{ t.h.cur }}</div></div>
+<button style="all:unset;box-sizing:border-box;margin-top:18px;width:100%;min-height:56px;border-radius:12px;background:#F04E0E;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font:800 18px Onest;cursor:pointer" style-hover="background:#DB430A"><span class="ms" style="font-size:26px;font-variation-settings:'FILL' 1">play_arrow</span>Продолжить тренировку</button>
+</div>
+</sc-if>
+<sc-if value="{{ t.h.finished }}" hint-placeholder-val="{{ false }}">
+<div style="margin-top:4px;background:#0F0F0F;color:#fff;border-radius:16px;padding:20px">
+<div style="font:800 12px/1 Onest;letter-spacing:.08em;color:#A8A8A8;text-transform:uppercase">Тренировка завершена</div>
+<h2 style="margin:12px 0 6px;font:800 28px/1.1 Onest;letter-spacing:-0.02em">Техника и выносливость</h2>
+<p style="margin:0;font:600 16px/1.4 Onest;color:#CFCFCF">Выполнено {{ t.done }} из 9 этапов</p>
+</div>
+</sc-if>
+<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;border:1px solid #E3E3E3;border-radius:16px">
+<div style="padding:14px 16px"><div style="font:600 13px/1.3 Onest;color:#5C5C5C">Осталось</div><div style="margin-top:2px;display:flex;align-items:baseline;gap:5px;flex-wrap:wrap"><span style="font:800 26px/1 Onest">5</span><span style="font:700 15px/1.2 Onest">из 8 посещений</span></div></div>
+<div style="padding:14px 16px;border-left:1px solid #E3E3E3"><div style="font:600 13px/1.3 Onest;color:#5C5C5C">Действует до</div><div style="margin-top:4px;font:800 20px/1.1 Onest">30 ноября</div></div>
+</div>
+<h3 style="margin:26px 6px 4px;font:800 20px/1.2 Onest;letter-spacing:-0.01em">Последние тренировки</h3>
+<div style="padding:0 6px">
+<sc-for list="{{ recent }}" as="r" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:14px;min-height:68px;padding:10px 0;border-bottom:1px solid #EBEBEB">
+<div style="width:40px;text-align:center;flex:none"><div style="font:800 22px/1 Onest">{{ r.day }}</div><div style="font:700 12px/1.2 Onest;color:#5C5C5C;text-transform:uppercase;margin-top:2px">{{ r.mon }}</div></div>
+<div style="flex:1;min-width:0"><div style="font:700 16px/1.3 Onest">{{ r.title }}</div><div style="display:flex;align-items:center;gap:4px;margin-top:2px;font:500 13px/1.3 Onest;color:#5C5C5C"><span class="ms" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>{{ r.status }}</div></div>
+<span style="font:800 22px Onest;font-variant-numeric:tabular-nums">{{ r.score }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<nav style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E6E6;padding:4px 8px 34px;display:grid;grid-template-columns:repeat(4,1fr)"><sc-for list="{{ nav.home }}" as="n" hint-placeholder-count="4"><a style="min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:{{ n.lc }};font:700 11px Onest"><span class="ms" style="font-size:26px;color:{{ n.ic }};font-variation-settings:{{ n.fill }}">{{ n.icon }}</span>{{ n.label }}</a></sc-for></nav>
+<span style="position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:#0F0F0F"></span>
+</div>
+</div>
+
+<!-- 02 ГЛАВНАЯ БЕЗ ТРЕНИРОВКИ -->
+<div data-screen-label="02 Главная — без тренировки" style="display:flex;flex-direction:column;gap:14px;padding:10px">
+<div style="font:700 13px/1 Onest;color:rgba(0,0,0,.6)">02 · Главная — без активной тренировки</div>
+<div style="width:{{ fw }};height:844px;position:relative;overflow:hidden;border-radius:46px;background:#fff;box-shadow:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;color:#0F0F0F">
+<div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px 34px;box-sizing:border-box"><span style="font:600 16px/1 system-ui">9:41</span><span style="display:flex;gap:3px"><span class="ms" style="font-size:18px">signal_cellular_alt</span><span class="ms" style="font-size:18px">wifi</span><span class="ms" style="font-size:18px">battery_full</span></span></div>
+<div style="flex:1;overflow-y:auto;padding:0 12px 120px">
+<div style="display:flex;align-items:center;min-height:56px;padding:0 6px"><span style="font:800 26px/1 Onest;letter-spacing:-0.03em">ClimbPass</span></div>
+<div style="margin-top:4px;background:#0F0F0F;color:#fff;border-radius:16px;padding:20px">
+<div style="font:800 12px/1 Onest;letter-spacing:.08em;color:#A8A8A8;text-transform:uppercase">Нет активной тренировки</div>
+<h2 style="margin:12px 0 8px;font:800 28px/1.1 Onest;letter-spacing:-0.02em">Вы на скалодроме?</h2>
+<p style="margin:0;font:500 15px/1.5 Onest;color:#CFCFCF">Отметка спишет один проход. Тренировку можно начать после — второй проход не спишется.</p>
+<button onClick="{{ onVisit }}" style="all:unset;box-sizing:border-box;margin-top:18px;width:100%;min-height:56px;border-radius:12px;background:#F04E0E;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font:800 18px Onest;cursor:pointer" style-hover="background:#DB430A"><span class="ms" style="font-size:22px">{{ visit.icon }}</span>{{ visit.label }}</button>
+<button style="all:unset;box-sizing:border-box;margin-top:6px;width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;font:700 16px Onest;color:#fff;cursor:pointer">Начать тренировку</button>
+</div>
+<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;border:1px solid #E3E3E3;border-radius:16px">
+<div style="padding:14px 16px"><div style="font:600 13px/1.3 Onest;color:#5C5C5C">Осталось</div><div style="margin-top:2px;display:flex;align-items:baseline;gap:5px;flex-wrap:wrap"><span style="font:800 26px/1 Onest">{{ visit.left }}</span><span style="font:700 15px/1.2 Onest">из 8 посещений</span></div></div>
+<div style="padding:14px 16px;border-left:1px solid #E3E3E3"><div style="font:600 13px/1.3 Onest;color:#5C5C5C">Действует до</div><div style="margin-top:4px;font:800 20px/1.1 Onest">30 ноября</div></div>
+</div>
+<h3 style="margin:26px 6px 4px;font:800 20px/1.2 Onest;letter-spacing:-0.01em">Последние тренировки</h3>
+<div style="padding:0 6px">
+<sc-for list="{{ recentBase }}" as="r" hint-placeholder-count="2">
+<div style="display:flex;align-items:center;gap:14px;min-height:68px;padding:10px 0;border-bottom:1px solid #EBEBEB">
+<div style="width:40px;text-align:center;flex:none"><div style="font:800 22px/1 Onest">{{ r.day }}</div><div style="font:700 12px/1.2 Onest;color:#5C5C5C;text-transform:uppercase;margin-top:2px">{{ r.mon }}</div></div>
+<div style="flex:1;min-width:0"><div style="font:700 16px/1.3 Onest">{{ r.title }}</div><div style="display:flex;align-items:center;gap:4px;margin-top:2px;font:500 13px/1.3 Onest;color:#5C5C5C"><span class="ms" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>{{ r.status }}</div></div>
+<span style="font:800 22px Onest;font-variant-numeric:tabular-nums">{{ r.score }}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<nav style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E6E6;padding:4px 8px 34px;display:grid;grid-template-columns:repeat(4,1fr)"><sc-for list="{{ nav.home }}" as="n" hint-placeholder-count="4"><a style="min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:{{ n.lc }};font:700 11px Onest"><span class="ms" style="font-size:26px;color:{{ n.ic }};font-variation-settings:{{ n.fill }}">{{ n.icon }}</span>{{ n.label }}</a></sc-for></nav>
+<span style="position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:#0F0F0F"></span>
+</div>
+</div>
+
+<!-- 03 ВЫПОЛНЕНИЕ -->
+<div data-screen-label="03 Выполнение тренировки" style="display:flex;flex-direction:column;gap:14px;padding:10px">
+<div style="font:700 13px/1 Onest;color:rgba(0,0,0,.6)">03 · Выполнение тренировки</div>
+<div style="width:{{ fw }};height:844px;position:relative;overflow:hidden;border-radius:46px;background:#fff;box-shadow:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;color:#0F0F0F">
+<div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px 34px;box-sizing:border-box"><span style="font:600 16px/1 system-ui">9:41</span><span style="display:flex;gap:3px"><span class="ms" style="font-size:18px">signal_cellular_alt</span><span class="ms" style="font-size:18px">wifi</span><span class="ms" style="font-size:18px">battery_full</span></span></div>
+<div style="flex:none;padding:0 16px 14px">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-left:-12px">
+<button aria-label="Назад" style="all:unset;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;cursor:pointer" style-hover="background:#F2F2F2"><span class="ms">arrow_back</span></button>
+<sc-if value="{{ t.bar.canFinish }}" hint-placeholder-val="{{ true }}"><button onClick="{{ t.bar.onFinish }}" style="all:unset;box-sizing:border-box;min-height:48px;padding:0 14px;border:1.5px solid #0F0F0F;border-radius:12px;display:flex;align-items:center;gap:6px;font:700 15px Onest;cursor:pointer" style-hover="background:#F2F2F2"><span class="ms" style="font-size:20px">flag</span>Завершить</button></sc-if>
+</div>
+<h1 style="margin:6px 0 0;font:800 27px/1.12 Onest;letter-spacing:-0.025em;text-wrap:pretty">Техника и выносливость</h1>
+<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div><div style="font:700 12px/1.2 Onest;letter-spacing:.06em;text-transform:uppercase;color:#5C5C5C">План</div><div style="font:800 20px/1.2 Onest;margin-top:2px">90 минут</div></div>
+<div><div style="font:700 12px/1.2 Onest;letter-spacing:.06em;text-transform:uppercase;color:#5C5C5C">Выполнено</div><div style="font:800 20px/1.2 Onest;margin-top:2px;font-variant-numeric:tabular-nums">{{ t.done }} из 9</div></div>
+</div>
+<div style="display:flex;gap:3px;margin-top:12px"><sc-for list="{{ t.segs }}" as="seg" hint-placeholder-count="9"><span style="flex:1;height:8px;border-radius:2px;background:{{ seg.bg }}"></span></sc-for></div>
+</div>
+<div data-scroll="1" style="flex:1;overflow-y:auto;padding:0 0 {{ t.scrollPad }};border-top:1px solid #E6E6E6">
+<sc-for list="{{ t.sections }}" as="sec" hint-placeholder-count="3">
+<div>
+<div style="display:flex;justify-content:space-between;align-items:center;background:#F2F2F2;padding:10px 16px;font:800 12px/1.2 Onest;letter-spacing:.08em;text-transform:uppercase"><span>{{ sec.title }}</span><span style="color:#5C5C5C;font-variant-numeric:tabular-nums">{{ sec.count }}</span></div>
+<sc-for list="{{ sec.steps }}" as="step" hint-placeholder-count="3">
+<sc-if value="{{ step.closed }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ step.onClick }}" style="all:unset;box-sizing:border-box;width:100%;min-height:56px;display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid #EEEEEE;cursor:pointer" style-hover="background:#FAFAFA">
+<span style="width:22px;flex:none;font:800 14px Onest;color:#5C5C5C;font-variant-numeric:tabular-nums">{{ step.n }}</span>
+<span style="flex:1;min-width:0;font:600 16px/1.3 Onest;color:{{ step.titleColor }};text-wrap:pretty">{{ step.title }}</span>
+<span style="display:flex;align-items:center;gap:4px;font:600 13px/1.25 Onest;color:#5C5C5C;text-align:right;max-width:44%"><span class="ms" style="font-size:20px;color:{{ step.iconColor }};font-variation-settings:{{ step.fill }}">{{ step.icon }}</span>{{ step.label }}</span>
+</button>
+</sc-if>
+<sc-if value="{{ step.isOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;background:#0F0F0F">
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:800 15px Onest;color:#fff"><span style="display:flex;align-items:center;gap:6px;opacity:{{ step.hintDone }}"><span class="ms">check</span>Выполнено</span><span style="display:flex;align-items:center;gap:6px;opacity:{{ step.hintSkip }}">Пропустить<span class="ms">skip_next</span></span></div>
+<div onPointerDown="{{ step.pd }}" onPointerMove="{{ step.pm }}" onPointerUp="{{ step.pu }}" onPointerCancel="{{ step.pu }}" style="position:relative;touch-action:pan-y;transform:{{ step.dxT }};transition:{{ step.trans }};background:#FFF1EA;padding:18px 16px 20px;border-bottom:1px solid #F6D5C6">
+<div style="font:800 12px/1.2 Onest;letter-spacing:.08em;text-transform:uppercase;color:#B23A0A;display:flex;align-items:center;gap:6px"><span class="ms" style="font-size:16px;font-variation-settings:'FILL' 1">{{ step.chipIcon }}</span>{{ step.chip }} · Этап {{ step.num }} из 9</div>
+<h3 style="margin:8px 0 10px;font:800 24px/1.15 Onest;letter-spacing:-0.02em;text-wrap:pretty">{{ step.title }}</h3>
+<span style="display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 12px;border-radius:8px;background:#0F0F0F;color:#fff;font:700 15px/1.2 Onest;box-sizing:border-box"><span class="ms" style="font-size:18px">repeat</span>{{ step.meta }}</span>
+<p style="margin:12px 0 0;font:500 16px/1.5 Onest;text-wrap:pretty">{{ step.desc }}</p>
+<sc-if value="{{ step.hasPrev }}" hint-placeholder-val="{{ true }}">
+<div style="margin-top:16px;background:#fff;border:1px solid #F3CDBB;border-radius:12px;padding:12px 14px"><div style="font:800 12px/1.3 Onest;letter-spacing:.06em;text-transform:uppercase;color:#5C5C5C">В прошлый раз · {{ step.prevDate }}</div><p style="margin:4px 0 0;font:500 15px/1.45 Onest">{{ step.prevText }}</p></div>
+</sc-if>
+<sc-if value="{{ step.hasNote }}" hint-placeholder-val="{{ true }}">
+<label style="display:block;margin-top:16px"><span style="display:block;font:800 12px/1.3 Onest;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Моя заметка</span><textarea value="{{ step.note }}" onChange="{{ step.onNote }}" onFocus="{{ step.onFocus }}" onBlur="{{ step.onBlur }}" placeholder="Как прошёл этап?" rows="3" style="display:block;width:100%;box-sizing:border-box;min-height:80px;padding:12px 14px;font:500 16px/1.45 Onest;color:#0F0F0F;background:#fff;border:2px solid #0F0F0F;border-radius:10px;resize:none;outline:none" style-focus="border-color:#F04E0E"></textarea></label>
+</sc-if>
+<div style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:10px;font:600 13px/1.3 Onest;color:#5C5C5C"><span style="display:flex;align-items:center;gap:2px"><span class="ms" style="font-size:18px">arrow_back</span>Пропустить</span><span>·</span><span style="display:flex;align-items:center;gap:2px">Выполнено<span class="ms" style="font-size:18px">arrow_forward</span></span></div>
+</div>
+</div>
+</sc-if>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<div onMouseDown="{{ preventBlur }}" style="position:absolute;left:0;right:0;bottom:{{ t.bar.bottom }};background:#fff;border-top:1px solid #E6E6E6;padding:10px 12px {{ t.bar.padB }};display:flex;gap:8px;align-items:center;box-sizing:border-box">
+<sc-if value="{{ t.bar.todo }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ t.bar.onSkip }}" style="all:unset;box-sizing:border-box;flex:1;min-height:60px;background:#EDEDED;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font:800 17px Onest;color:#0F0F0F;cursor:pointer" style-hover="background:#E2E2E2"><span class="ms" style="font-size:24px">skip_next</span>Пропустить</button>
+<button onClick="{{ t.bar.onDone }}" style="all:unset;box-sizing:border-box;flex:1;min-height:60px;background:#F04E0E;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font:800 18px Onest;color:#fff;cursor:pointer" style-hover="background:#DB430A"><span class="ms" style="font-size:24px">check</span>Выполнено</button>
+</sc-if>
+<sc-if value="{{ t.bar.marked }}" hint-placeholder-val="{{ false }}">
+<button onClick="{{ t.bar.onUnmark }}" style="all:unset;box-sizing:border-box;flex:1;min-height:60px;background:#EDEDED;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font:800 16px Onest;cursor:pointer"><span class="ms" style="font-size:22px">undo</span>Снять отметку</button>
+<button onClick="{{ t.bar.onNext }}" style="all:unset;box-sizing:border-box;flex:1;min-height:60px;background:#0F0F0F;border-radius:12px;display:flex;align-items:center;justify-content:center;font:800 16px Onest;color:#fff;cursor:pointer;text-align:center">{{ t.bar.nextLabel }}</button>
+</sc-if>
+<sc-if value="{{ t.bar.none }}" hint-placeholder-val="{{ false }}">
+<button onClick="{{ t.bar.onFinish }}" style="all:unset;box-sizing:border-box;flex:1;min-height:60px;background:#F04E0E;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font:800 18px Onest;color:#fff;cursor:pointer"><span class="ms" style="font-size:22px">flag</span>Завершить тренировку</button>
+</sc-if>
+<sc-if value="{{ t.bar.fin }}" hint-placeholder-val="{{ false }}">
+<span style="flex:1;font:800 15px/1.3 Onest">{{ t.bar.finText }}</span>
+<button onClick="{{ t.bar.onReset }}" style="all:unset;box-sizing:border-box;min-height:48px;padding:0 16px;background:#EDEDED;border-radius:12px;display:flex;align-items:center;font:800 15px Onest;cursor:pointer">Сбросить демо</button>
+</sc-if>
+</div>
+<sc-if value="{{ t.kb }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;bottom:0;height:291px;background:#D1D3D9;display:flex;align-items:center;justify-content:center;font:12px ui-monospace,Menlo,monospace;color:#5d6068">экранная клавиатура</div></sc-if>
+<sc-if value="{{ t.sheet }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end">
+<div style="width:100%;background:#fff;border-radius:20px 20px 0 0;padding:24px 16px 46px;box-sizing:border-box">
+<h3 style="margin:0;font:800 24px/1.15 Onest;letter-spacing:-0.02em">Завершить тренировку?</h3>
+<p style="margin:8px 0 20px;font:500 16px/1.5 Onest;color:#3D3D3D">{{ t.sheetText }}</p>
+<button onClick="{{ t.onConfirm }}" style="all:unset;box-sizing:border-box;width:100%;min-height:60px;background:#F04E0E;border-radius:12px;display:flex;align-items:center;justify-content:center;font:800 18px Onest;color:#fff;cursor:pointer">Завершить</button>
+<button onClick="{{ t.onCancel }}" style="all:unset;box-sizing:border-box;margin-top:8px;width:100%;min-height:56px;background:#EDEDED;border-radius:12px;display:flex;align-items:center;justify-content:center;font:800 16px Onest;cursor:pointer">Вернуться к тренировке</button>
+</div>
+</div>
+</sc-if>
+<span style="position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:#0F0F0F"></span>
+</div>
+</div>
+
+<!-- 04 ПРОГРАММЫ -->
+<div data-screen-label="04 Программы" style="display:flex;flex-direction:column;gap:14px;padding:10px">
+<div style="font:700 13px/1 Onest;color:rgba(0,0,0,.6)">04 · Программы</div>
+<div style="width:{{ fw }};height:844px;position:relative;overflow:hidden;border-radius:46px;background:#fff;box-shadow:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;color:#0F0F0F">
+<div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px 34px;box-sizing:border-box"><span style="font:600 16px/1 system-ui">9:41</span><span style="display:flex;gap:3px"><span class="ms" style="font-size:18px">signal_cellular_alt</span><span class="ms" style="font-size:18px">wifi</span><span class="ms" style="font-size:18px">battery_full</span></span></div>
+<div style="flex:1;overflow-y:auto;padding:0 12px 120px">
+<div style="display:flex;align-items:center;min-height:56px;padding:0 6px"><span style="font:800 26px/1 Onest;letter-spacing:-0.03em">Программы</span></div>
+<p style="margin:0 6px 16px;font:500 15px/1.45 Onest;color:#5C5C5C">Две программы. Изменения применяются к следующим тренировкам.</p>
+<div style="border:1px solid #E3E3E3;border-radius:16px;overflow:hidden">
+<div style="padding:18px 16px 16px">
+<div style="display:flex;align-items:center;gap:8px;font:800 12px/1 Onest;letter-spacing:.08em;color:#B23A0A;text-transform:uppercase"><span style="width:8px;height:8px;border-radius:4px;background:#F04E0E"></span>Идёт · {{ t.done }} из 9</div>
+<h2 style="margin:10px 0 0;font:800 24px/1.15 Onest;letter-spacing:-0.02em">Техника и выносливость</h2>
+<div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:20px">
+<div><div style="font:800 20px/1 Onest">90</div><div style="font:600 12px/1.3 Onest;color:#5C5C5C;margin-top:3px">минут</div></div>
+<div><div style="font:800 20px/1 Onest">3</div><div style="font:600 12px/1.3 Onest;color:#5C5C5C;margin-top:3px">раздела</div></div>
+<div><div style="font:800 20px/1 Onest">9</div><div style="font:600 12px/1.3 Onest;color:#5C5C5C;margin-top:3px">этапов</div></div>
+</div>
+</div>
+<div style="display:flex;gap:8px;padding:0 16px 16px">
+<button style="all:unset;box-sizing:border-box;flex:1;min-height:52px;border-radius:12px;background:#F04E0E;color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;font:800 16px Onest;cursor:pointer"><span class="ms" style="font-variation-settings:'FILL' 1">play_arrow</span>Продолжить</button>
+<button aria-label="Изменить программу" style="all:unset;box-sizing:border-box;min-height:52px;padding:0 16px;border-radius:12px;background:#EDEDED;display:flex;align-items:center;justify-content:center;gap:6px;font:800 16px Onest;cursor:pointer"><span class="ms" style="font-size:20px">edit</span>Изменить</button>
+</div>
+</div>
+<div style="margin-top:12px;border:1px solid #E3E3E3;border-radius:16px;overflow:hidden">
+<div style="padding:18px 16px 16px">
+<div style="font:800 12px/1 Onest;letter-spacing:.08em;color:#5C5C5C;text-transform:uppercase">Последняя · 31 октября</div>
+<h2 style="margin:10px 0 0;font:800 24px/1.15 Onest;letter-spacing:-0.02em">Сила и техника</h2>
+<div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:20px">
+<div><div style="font:800 20px/1 Onest">80</div><div style="font:600 12px/1.3 Onest;color:#5C5C5C;margin-top:3px">минут</div></div>
+<div><div style="font:800 20px/1 Onest">3</div><div style="font:600 12px/1.3 Onest;color:#5C5C5C;margin-top:3px">раздела</div></div>
+<div><div style="font:800 20px/1 Onest">9</div><div style="font:600 12px/1.3 Onest;color:#5C5C5C;margin-top:3px">этапов</div></div>
+</div>
+</div>
+<div style="display:flex;gap:8px;padding:0 16px 16px">
+<button style="all:unset;box-sizing:border-box;flex:1;min-height:52px;border-radius:12px;background:#EDEDED;color:#7A7A7A;display:flex;align-items:center;justify-content:center;gap:6px;font:800 16px Onest;cursor:not-allowed"><span class="ms">play_arrow</span>Начать</button>
+<button style="all:unset;box-sizing:border-box;min-height:52px;padding:0 16px;border-radius:12px;background:#EDEDED;display:flex;align-items:center;justify-content:center;gap:6px;font:800 16px Onest;cursor:pointer"><span class="ms" style="font-size:20px">edit</span>Изменить</button>
+</div>
+<div style="display:flex;gap:8px;align-items:flex-start;padding:12px 16px;background:#F7F7F7;border-top:1px solid #EBEBEB;font:500 13px/1.4 Onest;color:#5C5C5C"><span class="ms" style="font-size:18px">info</span>Начать можно после завершения текущей тренировки.</div>
+</div>
+</div>
+<nav style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E6E6;padding:4px 8px 34px;display:grid;grid-template-columns:repeat(4,1fr)"><sc-for list="{{ nav.prog }}" as="n" hint-placeholder-count="4"><a style="min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:{{ n.lc }};font:700 11px Onest"><span class="ms" style="font-size:26px;color:{{ n.ic }};font-variation-settings:{{ n.fill }}">{{ n.icon }}</span>{{ n.label }}</a></sc-for></nav>
+<span style="position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:#0F0F0F"></span>
+</div>
+</div>
+
+<!-- 05 РЕДАКТОР -->
+<div data-screen-label="05 Редактор программы" style="display:flex;flex-direction:column;gap:14px;padding:10px">
+<div style="font:700 13px/1 Onest;color:rgba(0,0,0,.6)">05 · Редактирование программы</div>
+<div style="width:{{ fw }};height:844px;position:relative;overflow:hidden;border-radius:46px;background:#fff;box-shadow:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;color:#0F0F0F">
+<div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px 34px;box-sizing:border-box"><span style="font:600 16px/1 system-ui">9:41</span><span style="display:flex;gap:3px"><span class="ms" style="font-size:18px">signal_cellular_alt</span><span class="ms" style="font-size:18px">wifi</span><span class="ms" style="font-size:18px">battery_full</span></span></div>
+<div style="flex:none;display:flex;align-items:center;gap:4px;padding:0 16px 0 4px;min-height:56px;border-bottom:1px solid #E6E6E6">
+<button aria-label="Закрыть" style="all:unset;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;cursor:pointer"><span class="ms">close</span></button>
+<span style="flex:1;font:800 18px Onest">Программа</span>
+</div>
+<div style="flex:1;overflow-y:auto;padding:16px 0 120px">
+<div style="padding:0 16px;display:grid;grid-template-columns:1fr 104px;gap:10px">
+<label style="display:block"><span style="display:block;font:800 12px/1.3 Onest;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Название</span><input value="Техника и выносливость" readonly="readonly" style="display:block;width:100%;box-sizing:border-box;min-height:52px;padding:0 14px;font:600 16px Onest;border:2px solid #0F0F0F;border-radius:10px;outline:none"></label>
+<label style="display:block"><span style="display:block;font:800 12px/1.3 Onest;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">План, мин</span><input value="90" readonly="readonly" inputmode="numeric" style="display:block;width:100%;box-sizing:border-box;min-height:52px;padding:0 14px;font:600 16px Onest;border:2px solid #E0E0E0;border-radius:10px;outline:none"></label>
+</div>
+<sc-for list="{{ editor }}" as="sec" hint-placeholder-count="3">
+<div style="margin-top:20px">
+<div style="display:flex;justify-content:space-between;align-items:center;background:#F2F2F2;padding:4px 4px 4px 16px;font:800 12px/1.2 Onest;letter-spacing:.08em;text-transform:uppercase"><span>{{ sec.title }}</span><button aria-label="Действия с разделом" style="all:unset;width:48px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer"><span class="ms" style="font-size:20px">more_horiz</span></button></div>
+<sc-for list="{{ sec.steps }}" as="s" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:6px;min-height:60px;padding:6px 4px 6px 8px;border-bottom:1px solid #EEEEEE">
+<span class="ms" style="color:#9E9E9E;width:32px;text-align:center">drag_indicator</span>
+<div style="flex:1;min-width:0"><div style="font:600 16px/1.3 Onest;text-wrap:pretty">{{ s.t }}</div><div style="font:500 13px/1.3 Onest;color:#5C5C5C;margin-top:2px">{{ s.m }}</div></div>
+<button aria-label="Изменить этап" style="all:unset;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;cursor:pointer" style-hover="background:#F2F2F2"><span class="ms" style="font-size:20px">edit</span></button>
+</div>
+</sc-for>
+<button style="all:unset;box-sizing:border-box;width:100%;min-height:52px;padding:0 16px;display:flex;align-items:center;gap:8px;font:800 15px Onest;color:#C2410C;cursor:pointer"><span class="ms" style="font-size:22px">add</span>Добавить этап</button>
+</div>
+</sc-for>
+<div style="padding:8px 16px 0"><button style="all:unset;box-sizing:border-box;width:100%;min-height:52px;border:1.5px dashed #BDBDBD;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font:800 15px Onest;cursor:pointer"><span class="ms" style="font-size:22px">add</span>Добавить раздел</button></div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E6E6;padding:10px 12px 46px;display:flex;gap:8px;box-sizing:border-box">
+<button style="all:unset;box-sizing:border-box;flex:1;min-height:56px;background:#EDEDED;border-radius:12px;display:flex;align-items:center;justify-content:center;font:800 16px Onest;cursor:pointer">Отмена</button>
+<button style="all:unset;box-sizing:border-box;flex:1.4;min-height:56px;background:#F04E0E;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font:800 17px Onest;color:#fff;cursor:pointer"><span class="ms" style="font-size:22px">check</span>Сохранить</button>
+</div>
+<span style="position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:#0F0F0F"></span>
+</div>
+</div>
+
+<!-- 06 ИСТОРИЯ -->
+<div data-screen-label="06 История" style="display:flex;flex-direction:column;gap:14px;padding:10px">
+<div style="font:700 13px/1 Onest;color:rgba(0,0,0,.6)">06 · История</div>
+<div style="width:{{ fw }};height:844px;position:relative;overflow:hidden;border-radius:46px;background:#fff;box-shadow:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;color:#0F0F0F">
+<div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px 34px;box-sizing:border-box"><span style="font:600 16px/1 system-ui">9:41</span><span style="display:flex;gap:3px"><span class="ms" style="font-size:18px">signal_cellular_alt</span><span class="ms" style="font-size:18px">wifi</span><span class="ms" style="font-size:18px">battery_full</span></span></div>
+<div style="flex:none;padding:0 12px">
+<div style="display:flex;align-items:center;min-height:56px;padding:0 6px"><span style="font:800 26px/1 Onest;letter-spacing:-0.03em">История</span></div>
+<div style="display:flex;gap:4px;padding:4px;background:#F2F2F2;border-radius:12px"><sc-for list="{{ hist.filters }}" as="f" hint-placeholder-count="3"><button onClick="{{ f.on }}" style="all:unset;box-sizing:border-box;flex:1;min-height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;font:700 14px Onest;background:{{ f.bg }};color:{{ f.c }};box-shadow:{{ f.sh }};cursor:pointer;text-align:center">{{ f.label }}</button></sc-for></div>
+</div>
+<div style="flex:1;overflow-y:auto;padding:4px 0 120px">
+<sc-for list="{{ hist.groups }}" as="g" hint-placeholder-count="2">
+<div>
+<div style="padding:18px 18px 6px;font:800 12px/1.2 Onest;letter-spacing:.08em;text-transform:uppercase;color:#5C5C5C">{{ g.month }}</div>
+<sc-for list="{{ g.items }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:14px;min-height:68px;padding:10px 18px;border-bottom:1px solid #EBEBEB">
+<div style="width:40px;text-align:center;flex:none"><div style="font:800 22px/1 Onest">{{ r.day }}</div><div style="font:700 12px/1.2 Onest;color:#5C5C5C;text-transform:uppercase;margin-top:2px">{{ r.mon }}</div></div>
+<div style="flex:1;min-width:0"><div style="font:700 16px/1.3 Onest;color:{{ r.tc }}">{{ r.title }}</div><div style="display:flex;align-items:center;gap:4px;margin-top:2px;font:600 13px/1.3 Onest;color:{{ r.sc }}"><span class="ms" style="font-size:16px;font-variation-settings:'FILL' 1">{{ r.icon }}</span>{{ r.status }}</div></div>
+<span style="font:800 22px Onest;font-variant-numeric:tabular-nums">{{ r.score }}</span>
+</div>
+</sc-for>
+</div>
+</sc-for>
+<sc-if value="{{ hist.empty }}" hint-placeholder-val="{{ false }}"><p style="margin:32px 18px;font:500 15px/1.5 Onest;color:#5C5C5C">Здесь пока пусто.</p></sc-if>
+</div>
+<nav style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E6E6;padding:4px 8px 34px;display:grid;grid-template-columns:repeat(4,1fr)"><sc-for list="{{ nav.hist }}" as="n" hint-placeholder-count="4"><a style="min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:{{ n.lc }};font:700 11px Onest"><span class="ms" style="font-size:26px;color:{{ n.ic }};font-variation-settings:{{ n.fill }}">{{ n.icon }}</span>{{ n.label }}</a></sc-for></nav>
+<span style="position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:#0F0F0F"></span>
+</div>
+</div>
+
+<!-- 07 ДЕТАЛИ -->
+<div data-screen-label="07 Тренировка из истории" style="display:flex;flex-direction:column;gap:14px;padding:10px">
+<div style="font:700 13px/1 Onest;color:rgba(0,0,0,.6)">07 · Тренировка из истории</div>
+<div style="width:{{ fw }};height:844px;position:relative;overflow:hidden;border-radius:46px;background:#fff;box-shadow:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;color:#0F0F0F">
+<div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px 34px;box-sizing:border-box"><span style="font:600 16px/1 system-ui">9:41</span><span style="display:flex;gap:3px"><span class="ms" style="font-size:18px">signal_cellular_alt</span><span class="ms" style="font-size:18px">wifi</span><span class="ms" style="font-size:18px">battery_full</span></span></div>
+<div style="flex:none;padding:0 16px 14px">
+<div style="margin-left:-12px"><button aria-label="Назад" style="all:unset;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:24px;cursor:pointer"><span class="ms">arrow_back</span></button></div>
+<div style="display:flex;align-items:center;gap:6px;font:800 12px/1.2 Onest;letter-spacing:.08em;text-transform:uppercase;color:#5C5C5C"><span class="ms" style="font-size:16px;font-variation-settings:'FILL' 1">check_circle</span>28 октября · Завершена</div>
+<h1 style="margin:6px 0 0;font:800 27px/1.12 Onest;letter-spacing:-0.025em">Техника и выносливость</h1>
+<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div><div style="font:700 12px/1.2 Onest;letter-spacing:.06em;text-transform:uppercase;color:#5C5C5C">План</div><div style="font:800 20px/1.2 Onest;margin-top:2px">90 минут</div></div>
+<div><div style="font:700 12px/1.2 Onest;letter-spacing:.06em;text-transform:uppercase;color:#5C5C5C">Выполнено</div><div style="font:800 20px/1.2 Onest;margin-top:2px">9 из 9</div></div>
+</div>
+<div style="display:flex;gap:3px;margin-top:12px"><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span><span style="flex:1;height:8px;border-radius:2px;background:#F04E0E"></span></div>
+</div>
+<div style="flex:1;overflow-y:auto;padding:0 0 48px;border-top:1px solid #E6E6E6">
+<sc-for list="{{ detail }}" as="sec" hint-placeholder-count="3">
+<div>
+<div style="display:flex;justify-content:space-between;align-items:center;background:#F2F2F2;padding:10px 16px;font:800 12px/1.2 Onest;letter-spacing:.08em;text-transform:uppercase"><span>{{ sec.title }}</span><span style="color:#5C5C5C">{{ sec.count }}</span></div>
+<sc-for list="{{ sec.steps }}" as="s" hint-placeholder-count="3">
+<div style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid #EEEEEE">
+<span style="width:22px;flex:none;font:800 14px/1.45 Onest;color:#5C5C5C">{{ s.n }}</span>
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:flex-start;gap:8px"><span style="flex:1;font:600 16px/1.35 Onest;text-wrap:pretty">{{ s.t }}</span><span style="display:flex;align-items:center;gap:4px;font:600 13px/1.5 Onest;color:#5C5C5C"><span class="ms" style="font-size:20px;font-variation-settings:'FILL' 1">check_circle</span>Выполнен</span></div>
+<sc-if value="{{ s.hasNote }}" hint-placeholder-val="{{ false }}"><p style="margin:6px 0 0;font:500 15px/1.45 Onest;color:#3D3D3D;text-wrap:pretty">{{ s.note }}</p></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<span style="position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:#0F0F0F"></span>
+</div>
+</div>
+
+<!-- 08 НАСТРОЙКИ -->
+<div data-screen-label="08 Настройки" style="display:flex;flex-direction:column;gap:14px;padding:10px">
+<div style="font:700 13px/1 Onest;color:rgba(0,0,0,.6)">08 · Настройки</div>
+<div style="width:{{ fw }};height:844px;position:relative;overflow:hidden;border-radius:46px;background:#fff;box-shadow:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);display:flex;flex-direction:column;color:#0F0F0F">
+<div style="height:47px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px 34px;box-sizing:border-box"><span style="font:600 16px/1 system-ui">9:41</span><span style="display:flex;gap:3px"><span class="ms" style="font-size:18px">signal_cellular_alt</span><span class="ms" style="font-size:18px">wifi</span><span class="ms" style="font-size:18px">battery_full</span></span></div>
+<div style="flex:1;overflow-y:auto;padding:0 12px 120px">
+<div style="display:flex;align-items:center;min-height:56px;padding:0 6px"><span style="font:800 26px/1 Onest;letter-spacing:-0.03em">Настройки</span></div>
+<div style="padding:18px 6px 6px;font:800 12px/1.2 Onest;letter-spacing:.08em;text-transform:uppercase;color:#5C5C5C">Абонемент</div>
+<div style="border:1px solid #E3E3E3;border-radius:16px;padding:16px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><span style="font:800 20px/1.2 Onest">{{ sub.title }}</span><span style="font:600 13px Onest;color:#5C5C5C">с 1 ноября</span></div>
+<div style="display:flex;gap:4px;margin:14px 0 10px"><sc-for list="{{ sub.cells }}" as="cl" hint-placeholder-count="8"><span style="flex:1;height:10px;border-radius:2px;background:{{ cl.bg }}"></span></sc-for></div>
+<div style="display:flex;justify-content:space-between;gap:12px;font:600 14px/1.3 Onest"><span>{{ sub.left }}</span><span style="color:#5C5C5C">до 30 ноября</span></div>
+<button onClick="{{ sub.open }}" style="all:unset;box-sizing:border-box;margin-top:14px;width:100%;min-height:52px;border-radius:12px;background:#EDEDED;display:flex;align-items:center;justify-content:center;gap:6px;font:800 16px Onest;cursor:pointer" style-hover="background:#E2E2E2"><span class="ms" style="font-size:22px">add_card</span>Новый абонемент</button>
+</div>
+<div style="padding:24px 6px 6px;font:800 12px/1.2 Onest;letter-spacing:.08em;text-transform:uppercase;color:#5C5C5C">Данные</div>
+<div style="border:1px solid #E3E3E3;border-radius:16px">
+<div style="display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 16px;border-bottom:1px solid #EBEBEB"><span class="ms" style="color:#2E7D32">cloud_off</span><div style="flex:1"><div style="font:700 16px/1.3 Onest">Работает офлайн</div><div style="font:500 13px/1.35 Onest;color:#5C5C5C;margin-top:2px">Все данные хранятся на этом устройстве</div></div></div>
+<button style="all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:14px;min-height:60px;padding:10px 16px;border-bottom:1px solid #EBEBEB;cursor:pointer"><span class="ms">download</span><span style="flex:1;font:700 16px Onest">Сохранить резервную копию</span><span class="ms" style="color:#9E9E9E">chevron_right</span></button>
+<button style="all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:14px;min-height:60px;padding:10px 16px;cursor:pointer"><span class="ms">upload</span><span style="flex:1;font:700 16px Onest">Восстановить из копии</span><span class="ms" style="color:#9E9E9E">chevron_right</span></button>
+</div>
+<button style="all:unset;box-sizing:border-box;margin-top:24px;width:100%;min-height:56px;border:1.5px solid #E3E3E3;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font:800 16px Onest;color:#B3261E;cursor:pointer"><span class="ms" style="font-size:22px">delete</span>Удалить все данные</button>
+<p style="margin:16px 6px 0;font:500 13px/1.4 Onest;color:#5C5C5C;text-align:center">ClimbPass 2.0</p>
+</div>
+<nav style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E6E6E6;padding:4px 8px 34px;display:grid;grid-template-columns:repeat(4,1fr)"><sc-for list="{{ nav.set }}" as="n" hint-placeholder-count="4"><a style="min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:{{ n.lc }};font:700 11px Onest"><span class="ms" style="font-size:26px;color:{{ n.ic }};font-variation-settings:{{ n.fill }}">{{ n.icon }}</span>{{ n.label }}</a></sc-for></nav>
+<sc-if value="{{ sub.sheet }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end">
+<div style="width:100%;background:#fff;border-radius:20px 20px 0 0;padding:24px 16px 46px;box-sizing:border-box">
+<h3 style="margin:0;font:800 24px/1.15 Onest;letter-spacing:-0.02em">Новый абонемент</h3>
+<p style="margin:6px 0 16px;font:500 15px/1.5 Onest;color:#3D3D3D">Заменит текущий. Оставшиеся посещения текущего абонемента не переносятся.</p>
+<div style="font:800 12px/1.3 Onest;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Посещений</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><sc-for list="{{ sub.opts }}" as="op" hint-placeholder-count="3"><button onClick="{{ op.on }}" style="all:unset;box-sizing:border-box;min-height:64px;border-radius:12px;border:2px solid {{ op.bc }};background:{{ op.bg }};display:flex;align-items:center;justify-content:center;font:800 26px Onest;cursor:pointer">{{ op.n }}</button></sc-for></div>
+<label style="display:block;margin-top:16px"><span style="display:block;font:800 12px/1.3 Onest;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Действует до</span><input value="2 декабря 2026" readonly="readonly" style="display:block;width:100%;box-sizing:border-box;min-height:52px;padding:0 14px;font:600 16px Onest;border:2px solid #E0E0E0;border-radius:10px;outline:none"></label>
+<button onClick="{{ sub.close }}" style="all:unset;box-sizing:border-box;margin-top:20px;width:100%;min-height:60px;background:#F04E0E;border-radius:12px;display:flex;align-items:center;justify-content:center;font:800 18px Onest;color:#fff;cursor:pointer">Оформить на {{ sub.pickLabel }}</button>
+<button onClick="{{ sub.close }}" style="all:unset;box-sizing:border-box;margin-top:8px;width:100%;min-height:56px;background:#EDEDED;border-radius:12px;display:flex;align-items:center;justify-content:center;font:800 16px Onest;cursor:pointer">Отмена</button>
+</div>
+</div>
+</sc-if>
+<span style="position:absolute;bottom:8px;left:50%;margin-left:-67px;width:134px;height:5px;border-radius:3px;background:#0F0F0F"></span>
+</div>
+</div>
+
+</div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;frameWidth&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[360,390,430],&quot;default&quot;:390,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Экран&quot;},&quot;showKeyboard&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Экран&quot;}}">
+class Component extends DCLogic {
+  steps = [
+    {s:0,t:'Суставная разминка',m:'10 минут',d:'Круговые движения в шее, плечах, локтях, запястьях, тазу и коленях. По 10 повторов в каждую сторону.'},
+    {s:0,t:'Лазание по простым трассам',m:'10 минут',d:'Две-три лёгкие трассы. Дыши ровно, разогревай пальцы без нагрузки на пределе.'},
+    {s:0,t:'Растяжка плеч и предплечий',m:'5 минут',d:'Мягко растяни сгибатели и разгибатели пальцев, грудные мышцы и широчайшие.'},
+    {s:1,t:'Тихие ноги',m:'4 трассы',d:'Ставь стопы беззвучно и точно. Смотри на зацеп до касания ногой.',prev:['28 октября','Стопы соскальзывали на маленьких зацепах. Держать пятку ниже.']},
+    {s:1,t:'Лазание на выносливость',m:'3 серии по 4 трассы',d:'Выбирай трассы комфортной сложности. Лезь плавно, следи за работой ног. Между сериями отдыхай до восстановления дыхания.',prev:['28 октября','Третья серия далась тяжело. В следующий раз начать спокойнее.']},
+    {s:1,t:'Траверс с перехватами',m:'2 подхода по 5 минут',d:'Двигайся вдоль стены без остановок. Чередуй широкие и короткие перехваты, не перехватывай зацепы с силой.',prev:['28 октября','Предплечья забились к концу второго подхода.']},
+    {s:1,t:'Висы на зацепах',m:'6 подходов по 10 секунд',d:'Средний зацеп, руки слегка согнуты, плечи активны. Отдых между подходами 2 минуты.',prev:['28 октября','Все подходы без срыва, можно добавить 2 секунды.']},
+    {s:2,t:'Лёгкое лазание',m:'5 минут',d:'Одна-две самые простые трассы в спокойном темпе.'},
+    {s:2,t:'Растяжка',m:'10 минут',d:'Предплечья, плечи, спина и задняя поверхность бедра. Каждое упражнение по 30–40 секунд.'},
+  ];
+  sect = ['Разминка','Основная часть','Заминка'];
+  fresh(){ return {st:['done','done','done','done','todo','todo','todo','todo','todo'],open:4,notes:{3:'Ноги ставил тише, на последней трассе спешил.',4:'Все серии выполнены, работа ног стала точнее'},kb:false,sheet:false,finished:false}; }
+  state = {t:this.fresh(), drag:0, visited:false, hf:0, subSheet:false, subPick:2};
+  up(fn){ this.setState(s=>({t:{...s.t,...fn(s.t)}})); }
+  mark(k){ this.up(S=>{ if(S.open<0) return {}; const st=S.st.slice(); st[S.open]=k; let n=st.indexOf('todo',S.open+1); if(n<0) n=st.indexOf('todo'); return {st,open:n}; }); }
+  pd(e){ if(e.target.closest('textarea,button,input')) return; this.sw={x:e.clientX,y:e.clientY,on:false,id:e.pointerId,el:e.currentTarget}; }
+  pm(e){ const s=this.sw; if(!s) return; const dx=e.clientX-s.x, dy=e.clientY-s.y;
+    if(!s.on){ if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.3){ s.on=true; try{s.el.setPointerCapture(s.id)}catch(_){} } else { if(Math.abs(dy)>10) this.sw=null; return; } }
+    const k=s.el.getBoundingClientRect().width/(s.el.offsetWidth||1)||1; this.setState({drag:dx/k}); }
+  pu(){ const s=this.sw; this.sw=null; if(!s||!s.on) return; const dx=this.state.drag; this.setState({drag:0});
+    const S=this.state.t; if(S.open<0||S.st[S.open]!=='todo') return; if(dx>90) this.mark('done'); else if(dx<-90) this.mark('skip'); }
+  focus(e){ const el=e.target; this.up(()=>({kb:true}));
+    setTimeout(()=>{ const sc=el.closest('[data-scroll]'); if(!sc) return; const k=sc.getBoundingClientRect().width/(sc.offsetWidth||1)||1;
+      const r=el.getBoundingClientRect(), cr=sc.getBoundingClientRect(); const delta=(r.bottom-cr.bottom)/k+291+84+16; if(delta>0) sc.scrollBy({top:delta,behavior:'smooth'}); },60); }
+  training(forceKb){
+    const S=this.state.t, dx=this.state.drag, kb=S.kb||forceKb;
+    const done=S.st.filter(x=>x==='done').length, skip=S.st.filter(x=>x==='skip').length, ft=S.st.indexOf('todo');
+    const segs=S.st.map(x=>({bg:x==='done'?'#F04E0E':x==='skip'?'#9E9E9E':'#E6E6E6', hbg:x==='done'?'#F04E0E':x==='skip'?'#7A7A7A':'#3A3A3A'}));
+    const mk=i=>{ const x=this.steps[i], s=S.st[i]; const label=s==='done'?'Выполнен':s==='skip'?'Пропущен':x.m;
+      return {n:String(i+1).padStart(2,'0'), num:i+1, title:x.t, meta:x.m, desc:x.d, isOpen:i===S.open, closed:i!==S.open,
+        icon:s==='done'?'check_circle':s==='skip'?'do_not_disturb_on':'radio_button_unchecked',
+        iconColor:s==='done'?'#0F0F0F':s==='skip'?'#8A8A8A':'#BDBDBD', titleColor:s==='todo'?'#0F0F0F':'#5C5C5C',
+        fill:s==='todo'?"'FILL' 0":"'FILL' 1", label,
+        chip:s==='todo'?(i===ft?'Сейчас':'Не отмечен'):label, chipIcon:s==='todo'?'play_arrow':s==='done'?'check':'skip_next',
+        hasPrev:!!x.prev, prevDate:x.prev?x.prev[0]:'', prevText:x.prev?x.prev[1]:'', hasNote:x.s===1, note:S.notes[i]||'',
+        onNote:e=>{const v=e.target.value; this.up(S2=>({notes:{...S2.notes,[i]:v}}));},
+        onFocus:e=>this.focus(e), onBlur:()=>this.up(()=>({kb:false})), onClick:()=>this.up(()=>({open:i})),
+        dxT:`translateX(${i===S.open?dx:0}px)`, trans:dx?'none':'transform .22s ease',
+        hintDone:Math.min(1,Math.max(0,dx/90)), hintSkip:Math.min(1,Math.max(0,-dx/90)),
+        pd:e=>this.pd(e), pm:e=>this.pm(e), pu:()=>this.pu()};
+    };
+    const sections=this.sect.map((title,si)=>{ const idx=this.steps.map((x,i)=>x.s===si?i:-1).filter(i=>i>=0);
+      return {title, count:`${idx.filter(i=>S.st[i]==='done').length}/${idx.length}`, steps:idx.map(mk)}; });
+    const o=S.open, os=o>=0?S.st[o]:null;
+    return { done, segs, sections, kb, sheet:S.sheet, scrollPad:kb?'420px':'150px',
+      sheetText:`Выполнено ${done} из 9${skip?`, пропущено ${skip}`:''}${ft>=0?`, без отметки ${S.st.filter(x=>x==='todo').length}`:''}. Тренировка сохранится в истории.`,
+      onConfirm:()=>this.up(()=>({finished:true,sheet:false,kb:false})), onCancel:()=>this.up(()=>({sheet:false})),
+      h:{active:!S.finished, finished:S.finished, cur:ft>=0?this.steps[ft].t:'Все этапы отмечены'},
+      bar:{ todo:!S.finished&&os==='todo', marked:!S.finished&&(os==='done'||os==='skip'), none:!S.finished&&o<0, fin:S.finished, canFinish:!S.finished,
+        nextLabel:ft>=0?'Следующий этап':'Завершить тренировку', finText:`Тренировка завершена · ${done} из 9`,
+        onDone:()=>this.mark('done'), onSkip:()=>this.mark('skip'),
+        onUnmark:()=>this.up(S2=>{const st=S2.st.slice(); st[S2.open]='todo'; return {st};}),
+        onNext:()=>this.up(S2=>{const n=S2.st.indexOf('todo'); return n>=0?{open:n}:{sheet:true};}),
+        onFinish:()=>this.up(()=>({sheet:true,kb:false})), onReset:()=>this.setState({t:this.fresh()}),
+        bottom:kb?'291px':'0px', padB:kb?'10px':'46px' } };
+  }
+  navFor(active){ return [['home','Главная'],['list_alt','Программы'],['history','История'],['settings','Настройки']].map(([icon,label],i)=>({icon,label,
+    lc:i===active?'#C2410C':'#3D3D3D', ic:i===active?'#F04E0E':'#3D3D3D', fill:i===active?"'FILL' 1":"'FILL' 0"})); }
+  renderVals(){
+    const p=this.props, t=this.training(!!p.showKeyboard), S=this.state.t;
+    const recentBase=[{day:'31',mon:'окт',title:'Сила и техника',score:'8/9',status:'Завершена'},{day:'28',mon:'окт',title:'Техника и выносливость',score:'9/9',status:'Завершена'}];
+    const recent=S.finished?[{day:'2',mon:'ноя',title:'Техника и выносливость',score:`${t.done}/9`,status:'Завершена'},recentBase[0]]:recentBase;
+    const ST={fin:['check_circle','Завершена','#5C5C5C'],unf:['timelapse','Незавершена','#5C5C5C'],act:['play_circle','Идёт','#C2410C'],vis:['how_to_reg','Посещение без тренировки','#5C5C5C']};
+    const row=(day,mon,title,score,k)=>({day,mon,title,score,k,icon:ST[k][0],status:ST[k][1],sc:ST[k][2],tc:k==='vis'?'#5C5C5C':'#0F0F0F'});
+    const all=[{month:'Ноябрь 2026',items:[row('2','ноя','Техника и выносливость',S.finished?`${t.done}/9`:`${t.done}/9`,S.finished?'fin':'act')]},
+      {month:'Октябрь 2026',items:[row('31','окт','Сила и техника','8/9','fin'),row('28','окт','Техника и выносливость','9/9','fin'),row('24','окт','Сила и техника','5/9','unf'),row('21','окт','Отметка посещения','','vis'),row('17','окт','Техника и выносливость','7/9','fin')]}];
+    const hf=this.state.hf, keep=r=>hf===0||(hf===1&&r.k==='fin')||(hf===2&&(r.k==='unf'||r.k==='act'));
+    const groups=all.map(g=>({...g,items:g.items.filter(keep)})).filter(g=>g.items.length);
+    const filters=['Все','Завершённые','Незавершённые'].map((label,i)=>({label,on:()=>this.setState({hf:i}),bg:i===hf?'#fff':'transparent',c:i===hf?'#0F0F0F':'#5C5C5C',sh:i===hf?'0 1px 3px rgba(0,0,0,.12)':'none'}));
+    const notes28={3:'Стопы соскальзывали на маленьких зацепах. Держать пятку ниже.',4:'Третья серия далась тяжело. В следующий раз начать спокойнее.',5:'Предплечья забились к концу второго подхода.',6:'Все подходы без срыва, можно добавить 2 секунды.'};
+    const bySect=f=>this.sect.map((title,si)=>{ const idx=this.steps.map((x,i)=>x.s===si?i:-1).filter(i=>i>=0); return f(title,idx); });
+    const editor=bySect((title,idx)=>({title,steps:idx.map(i=>this.steps[i])}));
+    const detail=bySect((title,idx)=>({title,count:`${idx.length}/${idx.length}`,steps:idx.map(i=>({n:String(i+1).padStart(2,'0'),t:this.steps[i].t,note:notes28[i]||'',hasNote:!!notes28[i]}))}));
+    const left=this.state.visited?4:5, pk=this.state.subPick, opts=[1,4,8];
+    return { fw:(p.frameWidth??390)+'px', t, recent, recentBase, preventBlur:e=>e.preventDefault(),
+      nav:{home:this.navFor(0),prog:this.navFor(1),hist:this.navFor(2),set:this.navFor(3)},
+      visit:{left, label:this.state.visited?'Посещение отмечено':'Отметить посещение', icon:this.state.visited?'check':'how_to_reg'},
+      onVisit:()=>this.setState({visited:true}),
+      hist:{filters,groups,empty:!groups.length}, editor, detail,
+      sub:{ title:'8 посещений', left:'Осталось 5 из 8 посещений', cells:Array.from({length:8},(_,i)=>({bg:i<3?'#D6D6D6':'#0F0F0F'})),
+        sheet:this.state.subSheet, open:()=>this.setState({subSheet:true}), close:()=>this.setState({subSheet:false}),
+        pickLabel:['1 посещение','4 посещения','8 посещений'][pk],
+        opts:opts.map((n,i)=>({n,on:()=>this.setState({subPick:i}),bc:i===pk?'#0F0F0F':'#E0E0E0',bg:i===pk?'#FFF1EA':'#fff'})) }
+    };
+  }
+}
+</script>
+</body>
+</html>

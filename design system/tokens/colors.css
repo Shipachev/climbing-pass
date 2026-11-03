@@ -1,0 +1,83 @@
+/* ClimbPass — colors. Base palette, then semantic aliases. */
+:root{
+  /* Orange — the only accent */
+  --cp-orange-50:#FFF1EA;
+  --cp-orange-100:#F6D5C6;
+  --cp-orange-150:#F3CDBB;
+  --cp-orange-300:#FF7A45;
+  --cp-orange-500:#F04E0E;
+  --cp-orange-600:#DB430A;
+  --cp-orange-700:#C2410C;
+  --cp-orange-800:#B23A0A;
+  /* Neutrals */
+  --cp-white:#FFFFFF;
+  --cp-gray-50:#F7F7F7;
+  --cp-gray-75:#FAFAFA;
+  --cp-gray-100:#F2F2F2;
+  --cp-gray-150:#EDEDED;
+  --cp-gray-175:#EBEBEB;
+  --cp-gray-200:#E6E6E6;
+  --cp-gray-250:#E3E3E3;
+  --cp-gray-275:#E0E0E0;
+  --cp-gray-300:#BDBDBD;
+  --cp-gray-350:#A8A8A8;
+  --cp-gray-400:#9E9E9E;
+  --cp-gray-450:#8A8A8A;
+  --cp-gray-500:#7A7A7A;
+  --cp-gray-600:#5C5C5C;
+  --cp-gray-650:#3D3D3D;
+  --cp-gray-700:#3A3A3A;
+  --cp-gray-800:#2C2C2C;
+  --cp-ink:#0F0F0F;
+  /* Functional */
+  --cp-green-700:#2E7D32;
+  --cp-red-700:#B3261E;
+
+  /* Semantic — surfaces */
+  --surface-page:var(--cp-white);
+  --surface-raised:var(--cp-white);
+  --surface-muted:var(--cp-gray-100);
+  --surface-subtle:var(--cp-gray-50);
+  --surface-hover:var(--cp-gray-75);
+  --surface-inverse:var(--cp-ink);
+  --surface-current:var(--cp-orange-50);
+  --surface-scrim:rgba(0,0,0,.5);
+  /* Semantic — text */
+  --text-primary:var(--cp-ink);
+  --text-secondary:var(--cp-gray-600);
+  --text-tertiary:var(--cp-gray-650);
+  --text-disabled:var(--cp-gray-500);
+  --text-accent:var(--cp-orange-700);
+  --text-accent-strong:var(--cp-orange-800);
+  --text-on-accent:var(--cp-white);
+  --text-on-inverse:var(--cp-white);
+  --text-on-inverse-muted:var(--cp-gray-350);
+  --text-on-inverse-accent:var(--cp-orange-300);
+  --text-danger:var(--cp-red-700);
+  --text-positive:var(--cp-green-700);
+  /* Semantic — borders */
+  --border-default:var(--cp-gray-200);
+  --border-card:var(--cp-gray-250);
+  --border-row:var(--cp-gray-150);
+  --border-strong:var(--cp-ink);
+  --border-current:var(--cp-orange-100);
+  --border-inverse:var(--cp-gray-800);
+  /* Semantic — actions */
+  --action-primary:var(--cp-orange-500);
+  --action-primary-hover:var(--cp-orange-600);
+  --action-secondary:var(--cp-gray-150);
+  --action-secondary-hover:#E2E2E2;
+  --action-strong:var(--cp-ink);
+  --focus-ring:var(--cp-orange-500);
+  /* Semantic — step status */
+  --status-done:var(--cp-ink);
+  --status-skipped:var(--cp-gray-450);
+  --status-todo:var(--cp-gray-300);
+  --status-current:var(--cp-orange-800);
+  /* Semantic — progress segments */
+  --progress-done:var(--cp-orange-500);
+  --progress-skipped:var(--cp-gray-400);
+  --progress-todo:var(--cp-gray-200);
+  --progress-skipped-inverse:var(--cp-gray-500);
+  --progress-todo-inverse:var(--cp-gray-700);
+}

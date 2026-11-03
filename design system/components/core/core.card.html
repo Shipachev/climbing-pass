@@ -1,0 +1,22 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Core — Button, IconButton, Icon" -->
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../components/_card-boot.js"></script>
+<style>body{padding:20px;background:#fff}</style></head><body><div id="root"></div>
+<script type="text/babel">
+bootDS().then(function (NS) {
+
+  const { Button, IconButton, Icon } = NS;
+  const Row = (p) => <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:14}}>{p.children}</div>;
+  function App(){ return <div>
+    <Row><Button size="lg" icon="check">Выполнено</Button><Button variant="secondary" size="lg" icon="skip_next">Пропустить</Button><Button variant="strong">Следующий этап</Button></Row>
+    <Row><Button variant="outline" size="sm" icon="flag">Завершить</Button><Button variant="secondary" size="sm" icon="edit">Изменить</Button><Button disabled icon="play_arrow">Начать</Button><Button variant="danger" icon="delete">Удалить все данные</Button></Row>
+    <Row><IconButton icon="arrow_back" label="Назад" /><IconButton icon="close" label="Закрыть" /><IconButton icon="edit" label="Изменить" iconSize={20} />
+      <span style={{width:1,height:28,background:'var(--border-default)',margin:'0 6px'}} />
+      <Icon name="check_circle" fill /><Icon name="do_not_disturb_on" fill color="var(--status-skipped)" /><Icon name="radio_button_unchecked" color="var(--status-todo)" /><Icon name="play_circle" fill color="var(--action-primary)" /><Icon name="timelapse" /><Icon name="how_to_reg" /></Row>
+  </div>; }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+});
+</script></body></html>

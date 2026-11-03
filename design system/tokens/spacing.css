@@ -1,0 +1,38 @@
+/* ClimbPass — spacing, radii, sizes, elevation, motion */
+:root{
+  --space-0:0; --space-1:2px; --space-2:4px; --space-3:6px; --space-4:8px; --space-5:10px;
+  --space-6:12px; --space-7:14px; --space-8:16px; --space-9:18px; --space-10:20px; --space-12:24px; --space-14:28px;
+
+  --gutter-screen:12px;      /* home / lists */
+  --gutter-content:16px;     /* workout, forms */
+  --card-padding:20px;
+
+  --radius-segment:2px;
+  --radius-chip:8px;
+  --radius-input:10px;
+  --radius-control:12px;     /* buttons */
+  --radius-card:16px;
+  --radius-sheet:20px;
+  --radius-pill:999px;
+
+  --tap-min:48px;
+  --button-h:56px;
+  --button-h-lg:60px;
+  --row-h:56px;
+  --row-h-lg:68px;
+  --segment-h:8px;
+  --segment-h-hero:10px;
+
+  --safe-top:env(safe-area-inset-top,47px);
+  --safe-bottom:env(safe-area-inset-bottom,34px);
+  --keyboard-demo-h:291px;
+
+  --shadow-none:none;
+  --shadow-selected:0 1px 3px rgba(0,0,0,.12);
+  --shadow-device:0 0 0 10px #111,0 24px 60px rgba(0,0,0,.2);
+
+  --ease-standard:ease;
+  --dur-fast:.22s;
+  --dur-base:.3s;
+  --swipe-threshold:90px;
+}

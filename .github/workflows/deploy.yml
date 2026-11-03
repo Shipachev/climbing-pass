@@ -1,19 +1,82 @@
-name: Deploy PWA
-
+name: Check and deploy ClimbPass
 on:
   push:
-    branches:
-      - master
-
+    branches: [master]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: climbpass-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  deploy:
+  check:
     runs-on: ubuntu-latest
-
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: test-only
+          MYSQL_DATABASE: climbpass_ci_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ptest-only"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: mysql://root:test-only@127.0.0.1:3306/climbpass_ci_test
+      APP_ORIGIN: http://localhost:4173
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: /usr/local/bin/climb-pass-deploy
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: python3 -B -m unittest discover -s tests -p '*_test.py'
+      - run: npm run check
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run migrate
+      - run: npm run test:integration
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-evidence
+          path: |
+            docs/refactoring/screenshots/
+            test-results/
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && vars.CLIMBPASS_SERVER_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy exact SHA through the restricted project trigger
+        shell: bash
+        env:
+          CLIMBPASS_DEPLOY_KEY: ${{ secrets.CLIMBPASS_DEPLOY_KEY }}
+          DEPLOY_SHA: ${{ github.sha }}
+          SSH_KNOWN_HOSTS: ${{ vars.CLIMBPASS_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test -n "$CLIMBPASS_DEPLOY_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          work=$(mktemp -d)
+          trap 'rm -rf "$work"' EXIT
+          umask 077
+          printf '%s\n' "$CLIMBPASS_DEPLOY_KEY" | tr -d '\r' > "$work/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$work/known_hosts"
+          ssh -T -i "$work/key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 \
+            -o UserKnownHostsFile="$work/known_hosts" \
+            -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
+            climbpass-deploy@153.80.205.21 "deploy $DEPLOY_SHA" | tee "$work/deploy.log"
+          grep -Eq "^(Published ClimbPass Git commit:|Already active and ready Git commit:) $DEPLOY_SHA$" "$work/deploy.log"
+      - name: Check public HTTPS readiness
+        shell: bash
+        run: curl --fail --silent --show-error --max-time 20 https://climb-pass.app.shipachev.com/health

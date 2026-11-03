@@ -1,0 +1,21 @@
+#!/usr/bin/python3
+"""Unprivileged forced SSH command. Never execute SSH_ORIGINAL_COMMAND as shell."""
+import os
+import re
+import subprocess
+import sys
+
+def requested_commit(command):
+    match=re.fullmatch(r'deploy ([0-9a-f]{40})',command)
+    if not match: raise ValueError('Only deploy <full Git commit> is allowed')
+    return match.group(1)
+
+def main():
+    try: commit=requested_commit(os.environ.get('SSH_ORIGINAL_COMMAND',''))
+    except ValueError as e:
+        print(str(e),file=sys.stderr); return 64
+    subprocess.run(['/usr/bin/logger','-t','climbpass-deploy-ssh',
+                    'commit='+commit+' peer='+os.environ.get('SSH_CONNECTION','unknown')],check=True)
+    return subprocess.run(['/usr/bin/sudo','-n','/usr/local/sbin/climbpass-deploy-trigger',commit]).returncode
+
+if __name__=='__main__': sys.exit(main())

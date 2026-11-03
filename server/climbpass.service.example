@@ -1,0 +1,26 @@
+[Unit]
+Description=ClimbPass
+Wants=network-online.target
+After=network-online.target mysql.service
+RequiresMountsFor=/srv/climbpass
+AssertPathIsMountPoint=/srv
+
+[Service]
+Type=simple
+User=climbpass
+Group=climbpass
+WorkingDirectory=/srv/climbpass/current
+EnvironmentFile=/etc/climbpass/climbpass.env
+Environment=NODE_ENV=production
+Environment=TZ=Asia/Novokuznetsk
+ExecStart=/usr/bin/node /srv/climbpass/current/server/index.js
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
